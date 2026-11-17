@@ -40,3 +40,4 @@ Base cloud : exécuter une fois `cloud/v1-operations.sql` dans l’éditeur SQL 
 - [Modèle de données](docs/MODELE-DONNEES.md)
 - [Parcours et interface](docs/PARCOURS-INTERFACE.md)
 - [Politique de confidentialité](docs/POLITIQUE-CONFIDENTIALITE.md)
+- [Publication sur le Store](docs/PUBLICATION-STORE.md)
