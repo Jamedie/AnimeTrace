@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- AnimeTrace — logo piste M (corps moutarde, écran nuit). Version complète : 48 px et plus. -->
+  <rect x="40" y="56" width="432" height="400" rx="96" fill="#f4b400"/>
+  <rect x="88" y="108" width="336" height="272" rx="56" fill="#211c29"/>
+  <ellipse cx="196" cy="236" rx="36" ry="46" fill="#fffaf1"/>
+  <ellipse cx="316" cy="236" rx="36" ry="46" fill="#fffaf1"/>
+  <circle cx="208" cy="220" r="13" fill="#211c29"/>
+  <circle cx="328" cy="220" r="13" fill="#211c29"/>
+  <path d="M226 310q30 26 60 0" stroke="#fffaf1" stroke-width="18" fill="none" stroke-linecap="round"/>
+  <rect x="176" y="404" width="160" height="20" rx="10" fill="#d97706"/>
+  <rect x="176" y="404" width="112" height="20" rx="10" fill="#211c29"/>
+  <path d="M430 18C437 62 446 72 492 80C446 88 437 98 430 142C423 98 414 88 368 80C414 72 423 62 430 18Z" fill="#fffaf1" stroke="#211c29" stroke-width="14" paint-order="stroke"/>
+</svg>

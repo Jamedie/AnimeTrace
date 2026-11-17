@@ -1,0 +1,8 @@
+node_modules/
+.output/
+.wxt/
+# Sauvegardes personnelles : jamais dans le dépôt.
+tests/fixtures/private/
+*.local.json
+.env.local
+.env

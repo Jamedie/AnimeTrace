@@ -1,0 +1,245 @@
+/* Fenêtre de l'icône — maquette « Popup — situations (V4) ». */
+body {
+  width: 380px;
+}
+.pop {
+  width: 380px;
+  min-height: 420px;
+  max-height: 600px;
+  display: flex;
+  flex-direction: column;
+}
+.hd {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px 10px;
+}
+
+.now {
+  margin: 4px 12px 0;
+  border-radius: 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.now-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.now-top .lbl {
+  color: var(--color-accent);
+}
+.domain {
+  font-size: 11.5px;
+  color: var(--color-ink-faint);
+}
+.now-main {
+  display: flex;
+  gap: 12px;
+}
+.ttl {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 19px;
+  line-height: 1.15;
+}
+.sub {
+  font-size: 12.5px;
+  color: var(--color-ink-soft);
+  margin-top: 3px;
+}
+.badge {
+  margin-top: 8px;
+}
+
+.bar {
+  height: 5px;
+  border-radius: 3px;
+  background: var(--color-surface-2);
+  position: relative;
+}
+.bar i {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  border-radius: 3px;
+  background: var(--color-accent);
+}
+.bar s {
+  position: absolute;
+  left: 90%;
+  top: -3px;
+  width: 2px;
+  height: 11px;
+  background: var(--color-ink-faint);
+  border-radius: 1px;
+}
+.times {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11.5px;
+  color: var(--color-ink-faint);
+  margin-top: 7px;
+  font-variant-numeric: tabular-nums;
+}
+
+.empty {
+  margin: 4px 12px 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px dashed var(--color-line);
+  font-size: 12.5px;
+  color: var(--color-ink-soft);
+  line-height: 1.45;
+}
+
+.rows {
+  padding: 12px 6px 0;
+}
+.rows > .lbl {
+  display: block;
+  padding: 2px 10px 6px;
+}
+.r {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 8px 10px;
+  border-radius: 12px;
+}
+.r:hover {
+  background: var(--color-surface);
+}
+.r-body {
+  flex: 1;
+  min-width: 0;
+}
+.rt {
+  font-weight: 700;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rm {
+  font-size: 12px;
+  color: var(--color-ink-soft);
+  margin-top: 2px;
+}
+.pips {
+  display: flex;
+  gap: 3px;
+  margin-top: 7px;
+  align-items: center;
+}
+.pips b {
+  width: 14px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--color-ink-soft);
+  opacity: 0.55;
+}
+.pc {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--color-ink-soft);
+  font-variant-numeric: tabular-nums;
+  margin-left: 6px;
+}
+.nx {
+  flex: none;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-accent-ink);
+  background: var(--color-accent);
+  border-radius: 8px;
+  padding: 6px 9px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.nx:hover {
+  background: var(--color-accent-light);
+}
+.hint {
+  padding: 4px 16px 0;
+  font-size: 12px;
+  color: var(--color-ink-faint);
+  line-height: 1.5;
+}
+
+.spacer {
+  flex: 1;
+}
+.ft {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-top: 1px solid var(--color-line);
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+/* Activation d'un nouveau domaine, lecteur inconnu, autorisation refusée */
+.ask {
+  margin: 4px 12px 0;
+  border-radius: 16px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  align-items: flex-start;
+}
+.ask h3 {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 20px;
+  line-height: 1.2;
+}
+.ask p {
+  font-size: 13px;
+  color: var(--color-ink-soft);
+  line-height: 1.5;
+}
+.url {
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 12px;
+  color: var(--color-ink);
+  background: var(--color-surface-2);
+  border-radius: 6px;
+  padding: 3px 7px;
+}
+.steps {
+  margin: 14px 18px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 12.5px;
+  color: var(--color-ink-soft);
+  line-height: 1.45;
+}
+.steps b {
+  color: var(--color-accent);
+}
+.player-ask {
+  border-top: 1px solid var(--color-line);
+  padding-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.player-ask > p {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--color-ink-soft);
+}
+.empty b {
+  color: var(--color-ink);
+}

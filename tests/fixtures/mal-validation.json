@@ -1,0 +1,385 @@
+[
+  {
+    "id": 63140,
+    "title": "Yasei no Last Boss ga Arawareta! 2nd Season",
+    "alternative_titles": {
+      "synonyms": [],
+      "en": "A Wild Last Boss Appeared! Season 2",
+      "ja": "野生のラスボスが現れた！第2期"
+    },
+    "num_episodes": 0,
+    "status": "currently_airing",
+    "picture": {
+      "medium": "https://cdn.myanimelist.net/images/anime/1689/160128.jpg",
+      "large": "https://cdn.myanimelist.net/images/anime/1689/160128l.jpg"
+    },
+    "imageStatus": 200,
+    "imageContentType": "image/jpeg",
+    "related_anime": [
+      {
+        "node": {
+          "id": 59644,
+          "title": "Yasei no Last Boss ga Arawareta!",
+          "main_picture": {
+            "medium": "https://cdn.myanimelist.net/images/anime/1810/160089.webp",
+            "large": "https://cdn.myanimelist.net/images/anime/1810/160089l.webp"
+          }
+        },
+        "relation_type": "prequel",
+        "relation_type_formatted": "Prequel"
+      }
+    ]
+  },
+  {
+    "id": 49918,
+    "title": "Boku no Hero Academia 6th Season",
+    "alternative_titles": {
+      "synonyms": ["My Hero Academia 6"],
+      "en": "My Hero Academia Season 6",
+      "ja": "僕のヒーローアカデミア"
+    },
+    "num_episodes": 25,
+    "status": "finished_airing",
+    "picture": {
+      "medium": "https://cdn.myanimelist.net/images/anime/1483/126005.jpg",
+      "large": "https://cdn.myanimelist.net/images/anime/1483/126005l.jpg"
+    },
+    "imageStatus": 200,
+    "imageContentType": "image/jpeg",
+    "related_anime": [
+      {
+        "node": {
+          "id": 41587,
+          "title": "Boku no Hero Academia 5th Season",
+          "main_picture": {
+            "medium": "https://cdn.myanimelist.net/images/anime/1911/113611.jpg",
+            "large": "https://cdn.myanimelist.net/images/anime/1911/113611l.jpg"
+          }
+        },
+        "relation_type": "prequel",
+        "relation_type_formatted": "Prequel"
+      },
+      {
+        "node": {
+          "id": 54624,
+          "title": "Bokurano",
+          "main_picture": {
+            "medium": "https://cdn.myanimelist.net/images/anime/1729/133784.jpg",
+            "large": "https://cdn.myanimelist.net/images/anime/1729/133784l.jpg"
+          }
+        },
+        "relation_type": "other",
+        "relation_type_formatted": "Other"
+      },
+      {
+        "node": {
+          "id": 54789,
+          "title": "Boku no Hero Academia 7th Season",
+          "main_picture": {
+            "medium": "https://cdn.myanimelist.net/images/anime/1573/157212.jpg",
+            "large": "https://cdn.myanimelist.net/images/anime/1573/157212l.jpg"
+          }
+        },
+        "relation_type": "sequel",
+        "relation_type_formatted": "Sequel"
+      },
+      {
+        "node": {
+          "id": 57519,
+          "title": "Boku no Hero Academia: Memories",
+          "main_picture": {
+            "medium": "https://cdn.myanimelist.net/images/anime/1607/142483.jpg",
+            "large": "https://cdn.myanimelist.net/images/anime/1607/142483l.jpg"
+          }
+        },
+        "relation_type": "summary",
+        "relation_type_formatted": "Summary"
+      }
+    ]
+  },
+  {
+    "id": 62513,
+    "title": "Clevatess II: Majuu no Ou to Itsuwari no Yuusha Denshou",
+    "alternative_titles": {
+      "synonyms": [],
+      "en": "Clevatess Season 2",
+      "ja": "クレバテスⅡ-魔獣の王と偽りの勇者伝承-"
+    },
+    "num_episodes": 13,
+    "status": "finished_airing",
+    "picture": {
+      "medium": "https://cdn.myanimelist.net/images/anime/1741/157105.webp",
+      "large": "https://cdn.myanimelist.net/images/anime/1741/157105l.webp"
+    },
+    "imageStatus": 200,
+    "imageContentType": "image/webp",
+    "related_anime": [
+      {
+        "node": {
+          "id": 59205,
+          "title": "Clevatess: Majuu no Ou to Akago to Shikabane no Yuusha",
+          "main_picture": {
+            "medium": "https://cdn.myanimelist.net/images/anime/1255/150593.webp",
+            "large": "https://cdn.myanimelist.net/images/anime/1255/150593l.webp"
+          }
+        },
+        "relation_type": "prequel",
+        "relation_type_formatted": "Prequel"
+      }
+    ]
+  },
+  {
+    "id": 63292,
+    "title": "Shinja Zero no Megami-sama to Hajimeru Isekai Kouryaku",
+    "alternative_titles": {
+      "synonyms": [
+        "Clear the World Like a Game with the Zero Believer Goddess"
+      ],
+      "en": "Full Clearing Another World under a Goddess with Zero Believers",
+      "ja": "信者ゼロの女神サマと始める異世界攻略"
+    },
+    "num_episodes": 12,
+    "status": "currently_airing",
+    "picture": {
+      "medium": "https://cdn.myanimelist.net/images/anime/1016/159863.jpg",
+      "large": "https://cdn.myanimelist.net/images/anime/1016/159863l.jpg"
+    },
+    "imageStatus": 200,
+    "imageContentType": "image/jpeg",
+    "related_anime": []
+  },
+  {
+    "id": 59062,
+    "title": "Gachiakuta",
+    "alternative_titles": {
+      "synonyms": [],
+      "en": "Gachiakuta",
+      "ja": "ガチアクタ"
+    },
+    "num_episodes": 24,
+    "status": "finished_airing",
+    "picture": {
+      "medium": "https://cdn.myanimelist.net/images/anime/1682/150432.jpg",
+      "large": "https://cdn.myanimelist.net/images/anime/1682/150432l.jpg"
+    },
+    "imageStatus": 200,
+    "imageContentType": "image/jpeg",
+    "related_anime": [
+      {
+        "node": {
+          "id": 62063,
+          "title": "Tomoshibi",
+          "main_picture": {
+            "medium": "https://cdn.myanimelist.net/images/anime/1581/151066.jpg",
+            "large": "https://cdn.myanimelist.net/images/anime/1581/151066l.jpg"
+          }
+        },
+        "relation_type": "other",
+        "relation_type_formatted": "Other"
+      },
+      {
+        "node": {
+          "id": 62892,
+          "title": "Let\u0027s Just Crash",
+          "main_picture": {
+            "medium": "https://cdn.myanimelist.net/images/anime/1400/153318.jpg",
+            "large": "https://cdn.myanimelist.net/images/anime/1400/153318l.jpg"
+          }
+        },
+        "relation_type": "other",
+        "relation_type_formatted": "Other"
+      },
+      {
+        "node": {
+          "id": 63147,
+          "title": "Gachiakuta 2nd Season",
+          "main_picture": {
+            "medium": "https://cdn.myanimelist.net/images/anime/1224/154534.jpg",
+            "large": "https://cdn.myanimelist.net/images/anime/1224/154534l.jpg"
+          }
+        },
+        "relation_type": "sequel",
+        "relation_type_formatted": "Sequel"
+      }
+    ]
+  },
+  {
+    "id": 58445,
+    "title": "Sayounara Ryuusei, Konnichiwa Jinsei",
+    "alternative_titles": {
+      "synonyms": ["Goodbye Dragon Life, Hello Human Life"],
+      "en": "Good Bye, Dragon Life",
+      "ja": "さようなら竜生、こんにちは人生"
+    },
+    "num_episodes": 12,
+    "status": "finished_airing",
+    "picture": {
+      "medium": "https://cdn.myanimelist.net/images/anime/1225/144606.jpg",
+      "large": "https://cdn.myanimelist.net/images/anime/1225/144606l.jpg"
+    },
+    "imageStatus": 200,
+    "imageContentType": "image/jpeg",
+    "related_anime": []
+  },
+  {
+    "id": 64340,
+    "title": "Tempal: Item no Chikara",
+    "alternative_titles": {
+      "synonyms": ["템빨"],
+      "en": "Overgeared",
+      "ja": "テムパル ～アイテムの力～"
+    },
+    "num_episodes": 12,
+    "status": "currently_airing",
+    "picture": {
+      "medium": "https://cdn.myanimelist.net/images/anime/1386/160022.jpg",
+      "large": "https://cdn.myanimelist.net/images/anime/1386/160022l.jpg"
+    },
+    "imageStatus": 200,
+    "imageContentType": "image/jpeg",
+    "related_anime": []
+  },
+  {
+    "id": 60948,
+    "title": "Mezametara Saikyou Soubi to Uchuusenmochi Datta node, Ikkodate Mezashite Youhei toshite Jiyuu ni Ikitai",
+    "alternative_titles": {
+      "synonyms": ["Mezameza", "Saikyosoubi"],
+      "en": "Reborn as a Space Mercenary: I Woke Up Piloting the Strongest Starship!",
+      "ja": "目覚めたら最強装備と宇宙船持ちだったので、一戸建て目指して傭兵として自由に生きたい"
+    },
+    "num_episodes": 13,
+    "status": "currently_airing",
+    "picture": {
+      "medium": "https://cdn.myanimelist.net/images/anime/1889/160053.jpg",
+      "large": "https://cdn.myanimelist.net/images/anime/1889/160053l.jpg"
+    },
+    "imageStatus": 200,
+    "imageContentType": "image/jpeg",
+    "related_anime": []
+  },
+  {
+    "id": 56009,
+    "title": "Yuusha-kei ni Shosu: Choubatsu Yuusha 9004-tai Keimu Kiroku",
+    "alternative_titles": {
+      "synonyms": [
+        "Sentenced to Brave Punishment",
+        "Punishment for Brave Hero: 9004 Corps Prison Record, Sentenced to Hero Punishment: The Service Records of the 9004th Penitent Hero Corps",
+        "Hero Punishment",
+        "Sentenced to Be a Hero: The Prison Records of Penal Hero Unit 9004"
+      ],
+      "en": "Sentenced to Be a Hero",
+      "ja": "勇者刑に処す 懲罰勇者9004隊刑務記録"
+    },
+    "num_episodes": 12,
+    "status": "finished_airing",
+    "picture": {
+      "medium": "https://cdn.myanimelist.net/images/anime/1062/151911.jpg",
+      "large": "https://cdn.myanimelist.net/images/anime/1062/151911l.jpg"
+    },
+    "imageStatus": 200,
+    "imageContentType": "image/jpeg",
+    "related_anime": [
+      {
+        "node": {
+          "id": 63820,
+          "title": "Yuusha-kei ni Shosu: Choubatsu Yuusha 9004-tai Keimu Kiroku 2nd Season",
+          "main_picture": {
+            "medium": "https://cdn.myanimelist.net/images/anime/1428/156326.jpg",
+            "large": "https://cdn.myanimelist.net/images/anime/1428/156326l.jpg"
+          }
+        },
+        "relation_type": "sequel",
+        "relation_type_formatted": "Sequel"
+      }
+    ]
+  },
+  {
+    "id": 51553,
+    "title": "Tongari Boushi no Atelier",
+    "alternative_titles": {
+      "synonyms": ["Atelier of Witch Hat"],
+      "en": "Witch Hat Atelier",
+      "ja": "とんがり帽子のアトリエ"
+    },
+    "num_episodes": 13,
+    "status": "finished_airing",
+    "picture": {
+      "medium": "https://cdn.myanimelist.net/images/anime/1726/155542.jpg",
+      "large": "https://cdn.myanimelist.net/images/anime/1726/155542l.jpg"
+    },
+    "imageStatus": 200,
+    "imageContentType": "image/jpeg",
+    "related_anime": [
+      {
+        "node": {
+          "id": 64018,
+          "title": "Kaze no Anthem",
+          "main_picture": {
+            "medium": "https://cdn.myanimelist.net/images/anime/1472/157010.jpg",
+            "large": "https://cdn.myanimelist.net/images/anime/1472/157010l.jpg"
+          }
+        },
+        "relation_type": "other",
+        "relation_type_formatted": "Other"
+      },
+      {
+        "node": {
+          "id": 64516,
+          "title": "Tongari Boushi no Atelier 2nd Season",
+          "main_picture": {
+            "medium": "https://cdn.myanimelist.net/images/anime/1928/158795.jpg",
+            "large": "https://cdn.myanimelist.net/images/anime/1928/158795l.jpg"
+          }
+        },
+        "relation_type": "sequel",
+        "relation_type_formatted": "Sequel"
+      }
+    ]
+  },
+  {
+    "id": 49233,
+    "title": "Youjo Senki II",
+    "alternative_titles": {
+      "synonyms": [
+        "The Military Chronicles of a Little Girl II",
+        "Youjo Senki 2nd Season"
+      ],
+      "en": "Saga of Tanya the Evil II",
+      "ja": "幼女戦記 II"
+    },
+    "num_episodes": 12,
+    "status": "finished_airing",
+    "picture": {
+      "medium": "https://cdn.myanimelist.net/images/anime/1917/158371.jpg",
+      "large": "https://cdn.myanimelist.net/images/anime/1917/158371l.jpg"
+    },
+    "imageStatus": 200,
+    "imageContentType": "image/jpeg",
+    "related_anime": [
+      {
+        "node": {
+          "id": 37055,
+          "title": "Youjo Senki Movie",
+          "main_picture": {
+            "medium": "https://cdn.myanimelist.net/images/anime/1249/117182.jpg",
+            "large": "https://cdn.myanimelist.net/images/anime/1249/117182l.jpg"
+          }
+        },
+        "relation_type": "prequel",
+        "relation_type_formatted": "Prequel"
+      },
+      {
+        "node": {
+          "id": 64577,
+          "title": "Youjo Shenki 2",
+          "main_picture": {
+            "medium": "https://cdn.myanimelist.net/images/anime/1690/158939.jpg",
+            "large": "https://cdn.myanimelist.net/images/anime/1690/158939l.jpg"
+          }
+        },
+        "relation_type": "other",
+        "relation_type_formatted": "Other"
+      }
+    ]
+  }
+]
