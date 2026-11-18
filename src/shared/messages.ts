@@ -6,6 +6,7 @@ import type {
 } from "../core/history/views";
 
 export interface PopupState {
+  catalogEnabled: boolean;
   current: (CurrentEpisodeView & CoverInfo) | null;
   recent: (RecentAnimeView & CoverInfo & { nextUrl: string | null })[];
   /** Lecteurs présents sur la page de l'onglet, mais non autorisés. */

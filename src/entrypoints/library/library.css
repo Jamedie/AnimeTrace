@@ -179,6 +179,7 @@ h1 {
   font-weight: 700;
   font-size: 15px;
   line-height: 1.25;
+  min-height: 2lh;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   line-clamp: 2;

@@ -36,6 +36,7 @@ import type {
   PopupState,
 } from "../shared/messages";
 import * as malSync from "../adapters/mal/sync";
+import { hasMalAccess } from "../adapters/mal/client";
 import {
   answerMal,
   readCatalog,
@@ -147,6 +148,7 @@ async function popupState(
   };
   const current = binding ? currentEpisodeView(lib, binding.versionId) : null;
   return {
+    catalogEnabled: await hasMalAccess(),
     current: current ? { ...current, ...cover(current.animeId) } : null,
     recent: recentAnimes(lib).map((r) => ({
       ...r,

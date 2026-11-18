@@ -327,6 +327,7 @@ async function load() {
       | ActivatedDomain[]
       | null) ?? [];
   render();
+  document.getElementById(location.hash.slice(1))?.scrollIntoView();
 }
 
 load().catch((e) => {

@@ -54,15 +54,16 @@ async function call<T>(
   url: string,
   init: RequestInit & { token?: string } = {},
 ): Promise<T> {
+  const auth: Record<string, string> = init.token
+    ? { Authorization: `Bearer ${init.token}` }
+    : { "X-MAL-CLIENT-ID": clientId() };
   let response: Response;
   try {
     response = await fetch(url, {
       ...init,
       headers: {
         ...(init.headers as Record<string, string>),
-        ...(init.token
-          ? { Authorization: `Bearer ${init.token}` }
-          : { "X-MAL-CLIENT-ID": clientId() }),
+        ...auth,
       },
       signal: AbortSignal.timeout(15000),
     });

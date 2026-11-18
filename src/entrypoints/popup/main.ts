@@ -117,12 +117,21 @@ function recentRow(r: PopupState["recent"][number]): HTMLElement {
 }
 
 function recentSection(state: PopupState): HTMLElement {
+  const catalogLink =
+    !state.catalogEnabled && state.recent.some((row) => !row.picture)
+      ? button("Activer les affiches", "text", () => {
+          void browser.tabs
+            .create({ url: browser.runtime.getURL("/settings.html") + "#mal" })
+            .then(() => window.close());
+        })
+      : null;
   return state.recent.length
     ? h(
         "section",
         { class: "rows" },
         h("span", { class: "lbl" }, "Récemment"),
         ...state.recent.map(recentRow),
+        catalogLink,
       )
     : h("p", { class: "hint" }, "Regarde un épisode : il apparaîtra ici.");
 }

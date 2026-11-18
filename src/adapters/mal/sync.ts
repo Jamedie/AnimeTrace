@@ -130,6 +130,25 @@ async function resolveCatalog(db: Database, deviceId: string): Promise<void> {
   }
 }
 
+/** Les associations importées contiennent l'identifiant MAL, sans la fiche en cache. */
+async function hydrateCatalog(db: Database): Promise<void> {
+  const { links, entries } = await readCatalog(db);
+  const cached = new Set(entries.map((entry) => entry.id));
+  const missing = new Set<number>();
+  for (const link of links) {
+    if (
+      link.status === "confirmed" &&
+      link.malId !== undefined &&
+      !cached.has(link.malId)
+    ) {
+      missing.add(link.malId);
+    }
+  }
+  for (const id of [...missing].slice(0, 3)) {
+    await saveEntries(db, [await mal.getAnime(id)]);
+  }
+}
+
 /** Numéros d'épisodes vus par saison (VF et VOSTFR comptent une fois). */
 async function watchedBySeason(db: Database): Promise<Map<string, number[]>> {
   const [episodes, versions] = await Promise.all([
@@ -233,6 +252,7 @@ export function runMal(db: Database, deviceId: string): Promise<void> {
     if (!(await mal.hasMalAccess())) return;
     try {
       await resolveCatalog(db, deviceId);
+      await hydrateCatalog(db);
       const s = await session();
       if (s) await syncList(db, s);
       await browser.storage.local.remove("malError");
