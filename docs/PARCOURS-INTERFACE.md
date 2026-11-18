@@ -43,6 +43,7 @@ Page complète de l’extension.
 - **Fiche d’un anime** : saisons, puis épisodes ; pour chaque épisode les versions de lecture avec leur position. Un épisode vu en VF et en VOSTFR compte une seule fois.
 - **Bouton « Reprendre »** : ouvre le prochain épisode sur l’adresse la plus récente du site.
 - **Affiche absente** (catalogue non associé ou indisponible) : visuel de remplacement.
+- **Nettoyage automatique**. Un anime dont seules des pages d’épisodes ont été consultées disparaît de la bibliothèque sept jours après la dernière ouverture. Une nouvelle ouverture le fait réapparaître. Dès qu’un épisode a été lancé, l’anime reste dans la bibliothèque, même avec zéro épisode vu. Les données de synchronisation restent disponibles pour appliquer une progression reçue d’un autre appareil.
 
 ### Situations à prévoir dans la bibliothèque
 

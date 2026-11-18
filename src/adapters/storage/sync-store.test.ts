@@ -1,8 +1,9 @@
 import "fake-indexeddb/auto";
 import { describe, expect, it } from "vitest";
 import type { EpisodeObservation } from "../../connectors/types";
+import { libraryView } from "../../core/history/library-view";
 import { createOperation, type Operation } from "../../core/sync/operations";
-import { countAll, openDatabase } from "./database";
+import { countAll, openDatabase, readLibrary } from "./database";
 import { recordOpened, recordProgress } from "./history-store";
 import {
   applyRemoteOperations,
@@ -36,6 +37,31 @@ function server() {
 }
 
 describe("synchronisation entre deux ordinateurs", () => {
+  it("une progression reçue après expiration rétablit l’anime sans épisode vu", async () => {
+    const pc = await freshDb();
+    const mac = await freshDb();
+    const cloud = server();
+    const version = await recordOpened(pc, obs, "pc", 1);
+    const now = 8 * 24 * 60 * 60 * 1_000;
+    cloud.push(await pendingOperations(pc));
+    await applyRemoteOperations(mac, cloud.pull(0));
+    expect(libraryView(await readLibrary(mac), undefined, now).animes).toEqual([]);
+
+    // La lecture a été enregistrée hors ligne avant l’expiration.
+    await recordProgress(
+      pc,
+      version.id,
+      { position: 30, duration: 1420, playing: false, ended: false },
+      "pc",
+      2,
+    );
+    cloud.push(await pendingOperations(pc));
+    await applyRemoteOperations(mac, cloud.pull(await getCursor(mac)));
+    expect(libraryView(await readLibrary(mac), undefined, now).animes).toEqual([
+      expect.objectContaining({ title: obs.title, watchedCount: 0 }),
+    ]);
+  });
+
   it("le second ordinateur retrouve les lectures du premier, sans doublon", async () => {
     const pc = await freshDb();
     const mac = await freshDb();

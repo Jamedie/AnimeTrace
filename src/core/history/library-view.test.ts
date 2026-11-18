@@ -85,6 +85,64 @@ describe("bibliothèque", () => {
     });
   });
 
+  it("retire après sept jours les animes seulement ouverts et les réaffiche à la réouverture", () => {
+    const openedAt = 1_000;
+    const expiresAt = openedAt + 7 * 24 * 60 * 60 * 1_000;
+    const opened = {
+      ...lib.versions[3]!,
+      watched: false,
+      updatedAt: undefined,
+      openedAt,
+    };
+    const history = { ...lib, versions: [...lib.versions.slice(0, 3), opened] };
+
+    const before = libraryView(history, undefined, expiresAt - 1);
+    expect(before.nextExpirationAt).toBe(expiresAt);
+    expect(before.totals.animes).toBe(2);
+
+    const after = libraryView(history, undefined, expiresAt);
+    expect(after.nextExpirationAt).toBeUndefined();
+    expect(after.animes.map((anime) => anime.id)).toEqual(["a"]);
+    expect(after.totals.animes).toBe(1);
+
+    history.versions.push({
+      ...opened,
+      id: "vb-f",
+      language: "VF",
+      openedAt: expiresAt,
+    });
+    expect(libraryView(history, undefined, expiresAt).totals.animes).toBe(2);
+  });
+
+  it("garde un anime sans épisode vu dès qu’une version a été lancée", () => {
+    const watched = lib.versions[3]!;
+    const history: Library = {
+      ...lib,
+      versions: [
+        ...lib.versions.slice(0, 3),
+        { ...watched, watched: false, position: 0, openedAt: 1 },
+        {
+          ...watched,
+          id: "vb-f",
+          language: "VF",
+          watched: false,
+          updatedAt: undefined,
+          position: 42,
+          openedAt: 1,
+        },
+      ],
+    };
+    const now = 30 * 24 * 60 * 60 * 1_000;
+    const view = libraryView(history, undefined, now);
+    expect(view.nextExpirationAt).toBeUndefined();
+    expect(view.animes.find((anime) => anime.id === "b")?.watchedCount).toBe(0);
+    // Même sans date de progression (ancien import), une position positive suffit.
+    history.versions = history.versions.filter(
+      (version) => version.id !== watched.id,
+    );
+    expect(libraryView(history, undefined, now).totals.animes).toBe(2);
+  });
+
   it("replie les épisodes vus d’affilée", () => {
     const ep = (number: number, watched = true): EpisodeView => ({
       number,

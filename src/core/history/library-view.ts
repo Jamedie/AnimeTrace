@@ -11,6 +11,8 @@ import {
 } from "../catalog/links";
 import { parseTitle } from "../catalog/match";
 
+const UNPLAYED_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
+
 export interface CatalogInput {
   links: CatalogLink[];
   entries: MalEntry[];
@@ -81,6 +83,7 @@ export interface AnimeCardView {
 
 export interface LibraryView {
   animes: AnimeCardView[];
+  nextExpirationAt?: number;
   totals: {
     animes: number;
     watchedEpisodes: number;
@@ -91,6 +94,7 @@ export interface LibraryView {
 export function libraryView(
   lib: Library,
   catalog: CatalogInput = { links: [], entries: [], malSync: [] },
+  now = Date.now(),
 ): LibraryView {
   const linkOf = new Map(catalog.links.map((l) => [l.seasonId, l]));
   const entryOf = new Map(catalog.entries.map((e) => [e.id, e]));
@@ -150,8 +154,12 @@ export function libraryView(
     };
   };
 
-  const animes: AnimeCardView[] = lib.animes.map((anime) => {
+  const animes: AnimeCardView[] = [];
+  let nextExpirationAt: number | undefined;
+  for (const anime of lib.animes) {
     let lastActivity = 0;
+    let lastOpenedAt = 0;
+    let hasPlayback = false;
     let last: {
       number: number;
       watched: boolean;
@@ -166,11 +174,15 @@ export function libraryView(
           .map((ep) => {
             const versions: VersionView[] = (versionsByEpisode.get(ep.id) ?? [])
               .map((v) => {
+                const status = versionStatus(v);
+                if (status !== "opened" || (v.position ?? 0) > 0)
+                  hasPlayback = true;
+                lastOpenedAt = Math.max(lastOpenedAt, v.openedAt ?? 0);
                 const at = v.updatedAt ?? v.openedAt;
                 const url = urlOf.get(v.id);
                 return {
                   language: v.language,
-                  status: versionStatus(v),
+                  status,
                   ...(v.position !== undefined && { position: v.position }),
                   ...(v.duration !== undefined && { duration: v.duration }),
                   ...(at !== undefined && { at }),
@@ -212,6 +224,12 @@ export function libraryView(
         };
       });
 
+    if (!hasPlayback && lastOpenedAt > 0) {
+      const expiresAt = lastOpenedAt + UNPLAYED_RETENTION_MS;
+      if (expiresAt <= now) continue;
+      nextExpirationAt = Math.min(nextExpirationAt ?? expiresAt, expiresAt);
+    }
+
     const watchedCount = seasons.reduce((n, s) => n + s.watchedCount, 0);
     const lastSeen = last as {
       number: number;
@@ -230,7 +248,7 @@ export function libraryView(
       total !== null && watchedCount >= total
         ? ("completed" as const)
         : ("in-progress" as const);
-    return {
+    animes.push({
       id: anime.id,
       title: anime.observedTitle,
       seasons,
@@ -241,13 +259,14 @@ export function libraryView(
       status,
       seasonNumber: parseTitle(anime.observedTitle).season,
       catalog: catalogView(seasons[0]?.id),
-    };
-  });
+    });
+  }
 
   animes.sort((a, b) => b.lastActivity - a.lastActivity);
   const lastActivity = animes[0]?.lastActivity || null;
   return {
     animes,
+    ...(nextExpirationAt !== undefined && { nextExpirationAt }),
     totals: {
       animes: animes.length,
       watchedEpisodes: animes.reduce((n, a) => n + a.watchedCount, 0),

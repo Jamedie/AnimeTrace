@@ -786,12 +786,29 @@ function sortSelect(): HTMLElement {
   return h("label", { class: "sort" }, "Trier", select);
 }
 
+let expirationTimer: ReturnType<typeof setTimeout> | undefined;
+
+function refreshAfterExpiration(delay: number) {
+  clearTimeout(expirationTimer);
+  expirationTimer = setTimeout(() => {
+    if (document.hidden) return;
+    if (ui.openAnimeId) {
+      refreshAfterExpiration(60_000);
+      return;
+    }
+    void load().catch(() => refreshAfterExpiration(60_000));
+  }, Math.min(delay, 2_147_483_647));
+}
+
 async function load() {
   const next = (await browser.runtime.sendMessage({
     type: "library.state",
   })) as LibraryState | null;
   if (!next) throw new Error("réponse vide du service worker");
   state = next;
+  clearTimeout(expirationTimer);
+  if (next.nextExpirationAt !== undefined)
+    refreshAfterExpiration(Math.max(0, next.nextExpirationAt - Date.now()));
   render();
 }
 
