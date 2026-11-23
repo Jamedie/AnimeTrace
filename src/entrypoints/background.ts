@@ -253,7 +253,7 @@ export default defineBackground(() => {
             }
             if (m.type === "mal.answer") {
               await answerMal(db, m.malId, m.answer, deviceId);
-              void malSync.runMal(db, deviceId);
+              void malSync.runMal(db, deviceId, { rerunIfRunning: true });
               return true;
             }
             await malSync.runMal(db, deviceId);
