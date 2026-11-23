@@ -10,7 +10,9 @@
 
 Extension Chrome et Brave qui retient automatiquement les épisodes d’anime que tu regardes : position dans la vidéo, épisodes vus, reprise en un clic. Synchronisation entre ordinateurs et mise à jour de ta liste MyAnimeList (MAL), en option.
 
-La V1 est en cours de finalisation ; la version publiée sur le Chrome Web Store est encore la 0.3.6.
+## Installation
+
+Ouvre la [fiche AnimeTrace sur le Chrome Web Store](https://chromewebstore.google.com/detail/animetrace/oececnmlgocopkohibfpdbkhmnaofooj?hl=fr) dans Chrome ou Brave, puis clique sur le bouton d’installation.
 
 ## Fonctionnalités
 
@@ -33,6 +35,10 @@ npm run build                # extension dans .output/chrome-mv3
 
 Base cloud : exécuter une fois `cloud/v1-operations.sql` dans l’éditeur SQL de Supabase. N’utiliser que la clé publique `sb_publishable_…` : aucune clé secrète dans le dépôt.
 
+## Déploiement
+
+Exécute `npm run zip` pour générer le paquet de publication dans `.output/`, puis ouvre l’onglet **Package** de la fiche AnimeTrace et importe le fichier ZIP. [Console développeur du Chrome Web Store](https://chrome.google.com/u/1/webstore/devconsole/22a107a1-cee9-466b-9272-8bc531cb8350/oececnmlgocopkohibfpdbkhmnaofooj/edit) · [Procédure de publication](docs/PUBLICATION-STORE.md)
+
 ## Documentation
 
 - [Fonctionnalités](docs/FONCTIONNALITES.md)
@@ -40,4 +46,3 @@ Base cloud : exécuter une fois `cloud/v1-operations.sql` dans l’éditeur SQL 
 - [Modèle de données](docs/MODELE-DONNEES.md)
 - [Parcours et interface](docs/PARCOURS-INTERFACE.md)
 - [Politique de confidentialité](docs/POLITIQUE-CONFIDENTIALITE.md)
-- [Publication sur le Store](docs/PUBLICATION-STORE.md)
