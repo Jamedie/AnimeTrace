@@ -1,5 +1,5 @@
 import "fake-indexeddb/auto";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { EpisodeObservation } from "../../connectors/types";
 import {
   buildBackupFile,
@@ -137,6 +137,91 @@ describe("sauvegarde V1", () => {
     ).toMatchObject({ updated: 0, unchanged: 1 });
     const kept = (await readLibrary(here)).versions[0];
     expect(kept).toMatchObject({ watched: true, position: 1400 });
+  });
+
+  it("préserve la progression Cloud reçue pendant la préparation de l’import", async () => {
+    const old = await freshDb();
+    const version = await recordOpened(old, obs(1), "pc", 1);
+    await recordProgress(
+      old,
+      version.id,
+      { position: 200, duration: 1420, playing: true, ended: false },
+      "pc",
+      2,
+    );
+    const backup = await parseBackupFile(await exportText(old));
+    const here = await freshDb();
+    await recordOpened(here, obs(1), "mac", 1);
+    await removeOperations(
+      here,
+      (await pendingOperations(here)).map((op) => op.id),
+    );
+
+    const digest = crypto.subtle.digest.bind(crypto.subtle);
+    const preparation = vi.spyOn(crypto.subtle, "digest").mockImplementationOnce(
+      async (algorithm, data) => {
+        await applyRemoteOperations(here, [
+          {
+            revision: 12,
+            operation: {
+              id: "cloud-progress",
+              deviceId: "pc",
+              createdAt: 3,
+              type: "version.progress",
+              payload: {
+                id: version.id,
+                watched: true,
+                position: 1400,
+                duration: 1420,
+                updatedAt: 3,
+              },
+            },
+          },
+        ]);
+        return digest(algorithm, data);
+      },
+    );
+    try {
+      expect(await importBackup(here, backup, "mac", 4)).toMatchObject({
+        updated: 0,
+        unchanged: 1,
+      });
+      expect(await here.get("versions", version.id)).toMatchObject({
+        position: 1400,
+        watched: true,
+        syncRevision: 12,
+      });
+      expect(await pendingOperations(here)).toHaveLength(0);
+    } finally {
+      preparation.mockRestore();
+    }
+  });
+
+  it("annule l’import si la création d’une opération Cloud échoue", async () => {
+    const source = await freshDb();
+    await recordOpened(source, obs(1), "pc", 1);
+    const backup = await parseBackupFile(await exportText(source));
+    const target = await freshDb();
+    const error = new Error("Impossible de créer un identifiant");
+    const uuid = vi.spyOn(crypto, "randomUUID").mockImplementationOnce(() => {
+      throw error;
+    });
+    try {
+      await expect(importBackup(target, backup, "mac", 2)).rejects.toBe(error);
+    } finally {
+      uuid.mockRestore();
+    }
+    expect(await readBackupData(target)).toMatchObject({
+      library: {
+        animes: [],
+        seasons: [],
+        episodes: [],
+        versions: [],
+        sourceRefs: [],
+      },
+      links: [],
+    });
+    expect(await pendingOperations(target)).toEqual([]);
   });
 
   it("accepte un export 0.3.6 et refuse un fichier inconnu", async () => {
