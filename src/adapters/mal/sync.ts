@@ -191,9 +191,10 @@ async function syncList(
     try {
       const remote = await mal.getMyStatus(s, malId);
       const entry = entryOf.get(malId);
-      let request: Promise<{ count: number } | { error: unknown }> | undefined;
-      await updateMalSync(db, malId, (current) => {
-        if (!shouldSync(highest, current)) return;
+      const request = await updateMalSync<{
+        response: Promise<{ count: number } | { error: unknown }>;
+      }>(db, malId, (current) => {
+        if (!shouldSync(highest, current)) return {};
         const decision = decideMalUpdate(remote, {
           watched: numbers,
           total: knownTotal(entry),
@@ -205,7 +206,7 @@ async function syncList(
         if (decision.action === "update") {
           // Lancer l'envoi pendant que la lecture et les réponses sont sérialisées.
           // La transaction se termine sans attendre le réseau.
-          request = mal.updateMyStatus(s, malId, decision.fields).then(
+          const response = mal.updateMyStatus(s, malId, decision.fields).then(
             (result) => ({
               count:
                 result.num_episodes_watched ??
@@ -215,7 +216,7 @@ async function syncList(
             }),
             (error: unknown) => ({ error }),
           );
-          return;
+          return { result: { response } };
         }
         const next = { ...current, updatedAt: Date.now() };
         delete next.lastError;
@@ -226,10 +227,10 @@ async function syncList(
         } else {
           next.lastSent ??= remote?.num_episodes_watched ?? 0;
         }
-        return next;
+        return { next };
       });
       if (!request) continue;
-      const result = await request;
+      const result = await request.response;
       if ("error" in result) throw result.error;
       const { count } = result;
       await updateMalSync(db, malId, (current) => {
@@ -240,7 +241,7 @@ async function syncList(
         };
         delete next.lastError;
         delete next.question;
-        return next;
+        return { next };
       });
       await browser.storage.local.set({
         malLastSent: {
@@ -255,9 +256,11 @@ async function syncList(
         return "deferred";
       }
       await updateMalSync(db, malId, (current) => ({
-        ...current,
-        lastError: error instanceof Error ? error.message : String(error),
-        updatedAt: Date.now(),
+        next: {
+          ...current,
+          lastError: error instanceof Error ? error.message : String(error),
+          updatedAt: Date.now(),
+        },
       }));
       if (error instanceof mal.MalError && error.status === 429)
         return "deferred";
@@ -305,6 +308,8 @@ async function runMalPass(
     await browser.storage.local.set({
       malError: error instanceof Error ? error.message : String(error),
     });
+    if (error instanceof mal.MalError && error.status === 429)
+      return "deferred";
   }
 }
 
