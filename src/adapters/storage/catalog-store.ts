@@ -99,11 +99,24 @@ export async function getMalSync(
   return db.get("malSync", malId);
 }
 
-export async function putMalSync(
+/** Sérialise la lecture et la modification avec les réponses locales et Cloud. */
+export async function updateMalSync<Result = void>(
   db: Database,
-  state: MalSyncState,
-): Promise<void> {
-  await db.put("malSync", state);
+  malId: number,
+  update: (state: MalSyncState) => {
+    next?: MalSyncState;
+    result?: Result;
+  },
+): Promise<Result | undefined> {
+  const tx = db.transaction("malSync", "readwrite");
+  const current = (await tx.store.get(malId)) ?? {
+    malId,
+    updatedAt: Date.now(),
+  };
+  const { next, result } = update(current);
+  if (next) await tx.store.put(next);
+  await tx.done;
+  return result;
 }
 
 /** Réponse de l'utilisateur (question des épisodes précédents, conflit), partagée entre ordinateurs. */

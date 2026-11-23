@@ -3,12 +3,12 @@
 
 import { browser } from "wxt/browser";
 import { matchCandidates, type MalCandidate } from "../../core/catalog/match";
-import { knownTotal } from "../../core/catalog/links";
+import { knownTotal, type MalSyncState } from "../../core/catalog/links";
 import { decideMalUpdate } from "../../core/mal-sync/rules";
 import type { Database } from "../storage/database";
 import {
   getMalSync,
-  putMalSync,
+  updateMalSync,
   readCatalog,
   saveEntries,
   saveLink,
@@ -165,7 +165,19 @@ async function watchedBySeason(db: Database): Promise<Map<string, number[]>> {
   return out;
 }
 
-async function syncList(db: Database, s: mal.MalSession): Promise<void> {
+function shouldSync(highest: number, state?: MalSyncState): boolean {
+  if (state?.conflict) return false;
+  if (state?.ignoreUntil !== undefined && highest <= state.ignoreUntil)
+    return false;
+  return (
+    state?.lastSent === undefined || highest > state.lastSent || !!state.question
+  );
+}
+
+async function syncList(
+  db: Database,
+  s: mal.MalSession,
+): Promise<"deferred" | void> {
   const { links, entries } = await readCatalog(db);
   const entryOf = new Map(entries.map((e) => [e.id, e]));
   const watched = await watchedBySeason(db);
@@ -173,98 +185,132 @@ async function syncList(db: Database, s: mal.MalSession): Promise<void> {
     if (link.status !== "confirmed" || link.malId === undefined) continue;
     const numbers = watched.get(link.seasonId) ?? [];
     if (!numbers.length) continue;
-    const state = (await getMalSync(db, link.malId)) ?? {
-      malId: link.malId,
-      updatedAt: Date.now(),
-    };
-    if (state.conflict) continue; // attend le choix de l'utilisateur
+    const malId = link.malId;
     const highest = Math.max(...numbers);
-    if (state.ignoreUntil !== undefined && highest <= state.ignoreUntil)
-      continue; // « Garder la valeur MAL »
-    // Rien de nouveau depuis le dernier envoi : pas d'appel à MAL.
-    if (
-      state.lastSent !== undefined &&
-      highest <= state.lastSent &&
-      !state.question
-    )
-      continue;
+    if (!shouldSync(highest, await getMalSync(db, malId))) continue;
     try {
-      const remote = await mal.getMyStatus(s, link.malId);
-      const entry = entryOf.get(link.malId);
-      const decision = decideMalUpdate(remote, {
-        watched: numbers,
-        total: knownTotal(entry),
-        ...(state.lastSent !== undefined && { lastSent: state.lastSent }),
-        ...(state.previousAnswer !== undefined && {
-          previousAnswer: state.previousAnswer,
-        }),
-      });
-      const next = { ...state, updatedAt: Date.now() };
-      delete next.lastError;
-      if (decision.action === "update") {
-        const result = await mal.updateMyStatus(s, link.malId, decision.fields);
-        next.lastSent =
-          result.num_episodes_watched ??
-          decision.fields.num_watched_episodes ??
-          state.lastSent ??
-          0;
-        delete next.question;
-        await browser.storage.local.set({
-          malLastSent: {
-            title:
-              entry?.alternative_titles?.en || entry?.title || `#${link.malId}`,
-            count: next.lastSent,
-            at: Date.now(),
-          },
+      const remote = await mal.getMyStatus(s, malId);
+      const entry = entryOf.get(malId);
+      const request = await updateMalSync<{
+        response: Promise<{ count: number } | { error: unknown }>;
+      }>(db, malId, (current) => {
+        if (!shouldSync(highest, current)) return {};
+        const decision = decideMalUpdate(remote, {
+          watched: numbers,
+          total: knownTotal(entry),
+          ...(current.lastSent !== undefined && { lastSent: current.lastSent }),
+          ...(current.previousAnswer !== undefined && {
+            previousAnswer: current.previousAnswer,
+          }),
         });
-      } else if (decision.action === "ask-previous") {
-        next.question = { from: decision.from, to: decision.to };
-      } else if (decision.action === "conflict") {
-        next.conflict = {
-          remote: decision.remote,
-          lastSent: decision.lastSent,
+        if (decision.action === "update") {
+          // Lancer l'envoi pendant que la lecture et les réponses sont sérialisées.
+          // La transaction se termine sans attendre le réseau.
+          const response = mal.updateMyStatus(s, malId, decision.fields).then(
+            (result) => ({
+              count:
+                result.num_episodes_watched ??
+                decision.fields.num_watched_episodes ??
+                remote?.num_episodes_watched ??
+                0,
+            }),
+            (error: unknown) => ({ error }),
+          );
+          return { result: { response } };
+        }
+        const next = { ...current, updatedAt: Date.now() };
+        delete next.lastError;
+        if (decision.action === "ask-previous") {
+          next.question = { from: decision.from, to: decision.to };
+        } else if (decision.action === "conflict") {
+          next.conflict = { remote: decision.remote, lastSent: decision.lastSent };
+        } else {
+          next.lastSent ??= remote?.num_episodes_watched ?? 0;
+        }
+        return { next };
+      });
+      if (!request) continue;
+      const result = await request.response;
+      if ("error" in result) throw result.error;
+      const { count } = result;
+      await updateMalSync(db, malId, (current) => {
+        const next = {
+          ...current,
+          lastSent: count,
+          updatedAt: Date.now(),
         };
-      } else if (next.lastSent === undefined) {
-        // Rien à envoyer (MAL déjà à jour ou en avance) : le compteur MAL devient la référence.
-        next.lastSent = remote?.num_episodes_watched ?? 0;
-      }
-      await putMalSync(db, next);
+        delete next.lastError;
+        delete next.question;
+        return { next };
+      });
+      await browser.storage.local.set({
+        malLastSent: {
+          title: entry?.alternative_titles?.en || entry?.title || `#${malId}`,
+          count,
+          at: Date.now(),
+        },
+      });
     } catch (error) {
       if (error instanceof mal.MalError && error.status === 401) {
         await browser.storage.local.set({ malNeedsReconnect: true });
-        return;
+        return "deferred";
       }
-      await putMalSync(db, {
-        ...state,
-        lastError: error instanceof Error ? error.message : String(error),
-        updatedAt: Date.now(),
-      });
-      if (error instanceof mal.MalError && error.status === 429) return; // on réessaie au prochain passage
+      await updateMalSync(db, malId, (current) => ({
+        next: {
+          ...current,
+          lastError: error instanceof Error ? error.message : String(error),
+          updatedAt: Date.now(),
+        },
+      }));
+      if (error instanceof mal.MalError && error.status === 429)
+        return "deferred";
     }
   }
 }
 
 let running: Promise<void> | null = null;
+let rerun = false;
 
 /** Un passage à la fois : catalogue puis liste. Silencieux si MAL n'est pas activé. */
-export function runMal(db: Database, deviceId: string): Promise<void> {
-  running ??= (async () => {
-    if (!(await mal.hasMalAccess())) return;
-    try {
-      await resolveCatalog(db, deviceId);
-      await hydrateCatalog(db);
-      const s = await session();
-      if (s) await syncList(db, s);
-      await browser.storage.local.remove("malError");
-    } catch (error) {
-      await browser.storage.local.set({
-        malError: error instanceof Error ? error.message : String(error),
-      });
-    }
+export function runMal(
+  db: Database,
+  deviceId: string,
+  { rerunIfRunning = false } = {},
+): Promise<void> {
+  if (running) {
+    rerun ||= rerunIfRunning;
+    return running;
+  }
+  running = (async () => {
+    do {
+      rerun = false;
+      if ((await runMalPass(db, deviceId)) === "deferred") break;
+    } while (rerun);
   })().finally(() => {
     running = null;
   });
   return running;
+}
+
+async function runMalPass(
+  db: Database,
+  deviceId: string,
+): Promise<"deferred" | void> {
+  if (!(await mal.hasMalAccess())) return;
+  try {
+    await resolveCatalog(db, deviceId);
+    await hydrateCatalog(db);
+    const s = await session();
+    const outcome = s ? await syncList(db, s) : undefined;
+    await browser.storage.local.remove("malError");
+    return outcome;
+  } catch (error) {
+    await browser.storage.local.set({
+      malError: error instanceof Error ? error.message : String(error),
+    });
+    if (error instanceof mal.MalError && error.status === 429)
+      return "deferred";
+  }
 }
 
 /** Recherche manuelle pour l'écran de choix d'une fiche. */
