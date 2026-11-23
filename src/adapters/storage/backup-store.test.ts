@@ -139,9 +139,14 @@ describe("sauvegarde V1", () => {
     expect(kept).toMatchObject({ watched: true, position: 1400 });
   });
 
-  it("préserve la progression Cloud reçue pendant la préparation de l’import", async () => {
+  it.each([
+    { openedAt: 1, updated: 0, unchanged: 1, types: [] },
+    { openedAt: 2, updated: 1, unchanged: 0, types: ["episode.opened"] },
+  ])("préserve la progression Cloud pendant l’import (ouverture $openedAt)", async ({
+    openedAt, updated, unchanged, types,
+  }) => {
     const old = await freshDb();
-    const version = await recordOpened(old, obs(1), "pc", 1);
+    const version = await recordOpened(old, obs(1), "pc", openedAt);
     await recordProgress(
       old,
       version.id,
@@ -183,15 +188,15 @@ describe("sauvegarde V1", () => {
     );
     try {
       expect(await importBackup(here, backup, "mac", 4)).toMatchObject({
-        updated: 0,
-        unchanged: 1,
+        updated,
+        unchanged,
       });
       expect(await here.get("versions", version.id)).toMatchObject({
         position: 1400,
         watched: true,
         syncRevision: 12,
       });
-      expect(await pendingOperations(here)).toHaveLength(0);
+      expect((await pendingOperations(here)).map((op) => op.type)).toEqual(types);
     } finally {
       preparation.mockRestore();
     }

@@ -96,6 +96,7 @@ async function observationFor(
 function operationsFor(
   observation: EpisodeObservation,
   v: PlaybackVersion,
+  local: PlaybackVersion | undefined,
   deviceId: string,
   now: number,
 ): Operation[] {
@@ -112,7 +113,13 @@ function operationsFor(
       v.openedAt ?? v.updatedAt ?? now,
     ),
   ];
-  if (v.watched || v.position !== undefined) {
+  const progressChanged =
+    !local ||
+    v.watched !== local.watched ||
+    v.position !== local.position ||
+    v.duration !== local.duration ||
+    v.updatedAt !== local.updatedAt;
+  if (progressChanged && (v.watched || v.position !== undefined)) {
     ops.push(
       createOperation(
         {
@@ -150,10 +157,9 @@ export async function importBackup(
 
   // Le calcul asynchrone des identifiants précède la transaction IndexedDB.
   const relations = indexBackupRelations(lib);
-  const observations = new Map<string, EpisodeObservation>();
+  const prepared: { version: PlaybackVersion; observation: EpisodeObservation | undefined }[] = [];
   for (const v of lib.versions) {
-    const observation = await observationFor(relations, v);
-    if (observation) observations.set(v.id, observation);
+    prepared.push({ version: v, observation: await observationFor(relations, v) });
   }
   const ops: Operation[] = [];
 
@@ -184,7 +190,7 @@ export async function importBackup(
         await tx.objectStore("episodes").put(e);
     // La fusion utilise l'état courant, y compris les opérations Cloud déjà appliquées.
     const versions = tx.objectStore("versions");
-    for (const v of lib.versions) {
+    for (const { version: v, observation } of prepared) {
       const local = await versions.get(v.id);
       const merged = mergeImportedVersion(local, {
         ...v,
@@ -198,8 +204,8 @@ export async function importBackup(
         continue;
       }
       await versions.put(merged);
-      const observation = observations.get(v.id);
-      if (observation) ops.push(...operationsFor(observation, merged, deviceId, now));
+      if (observation)
+        ops.push(...operationsFor(observation, merged, local, deviceId, now));
     }
     // Les adresses déjà connues sur cet ordinateur restent prioritaires.
     for (const r of lib.sourceRefs)
