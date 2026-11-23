@@ -81,7 +81,6 @@ describe("bibliothèque", () => {
 
     const recent = recentAnimes(history)[0]!;
     expect(recent).toMatchObject({ watchedCount: 3, lastNumber: 1, lastLanguage: "VF" });
-    expect(recent.lastUrl).toBeUndefined();
     const card = libraryView(history).animes[0];
     expect(card).toMatchObject({
       watchedCount: 3,
@@ -89,6 +88,7 @@ describe("bibliothèque", () => {
       lastPlayback: { number: 1, language: "VF", position: 600 },
     });
     expect(card?.resume?.knownUrl).toBeUndefined();
+    expect(card?.lastActivity).toBe(240);
   });
 
   it("exige une source connue pour l'épisode suivant si le total est inconnu", () => {
@@ -104,7 +104,7 @@ describe("bibliothèque", () => {
     expect(resume()).toEqual({ number: 11, knownUrl: url });
   });
 
-  it("propose la source de l'épisode 1 de la saison suivante si elle est identifiée", () => {
+  it("continue dans la saison locale quand la fiche MAL ne couvre qu'une partie", () => {
     const history = structuredClone(lib);
     history.versions[2]!.watched = true;
     history.animes.push({ id: "a2", observedTitle: "Overgeared Saison 2" });
@@ -117,18 +117,40 @@ describe("bibliothèque", () => {
         { seasonId: "sa2", malId: 2, status: "confirmed", at: 1 },
       ],
       entries: [
-        { id: 1, title: "Overgeared", num_episodes: 10, fetchedAt: 1 },
+        { id: 1, title: "Overgeared Season 1 Part 1", num_episodes: 10, fetchedAt: 1 },
         { id: 2, title: "Overgeared Season 2", num_episodes: 12, fetchedAt: 1 },
       ],
       malSync: [],
     } satisfies Parameters<typeof libraryView>[1];
     const resume = () => libraryView(history, catalog).animes.find((a) => a.id === "a")?.resume;
-    expect(resume()).toBeNull();
-    const url = "https://voiranime.to/anime/overgeared-2/overgeared-2-01-vostfr/";
-    history.sourceRefs.push({ site: "voiranime", contentKey: "overgeared-2:1:vostfr", entity: "version", entityId: "v1s2", url });
-    expect(resume()).toEqual({ number: 1, knownUrl: url });
-    catalog.entries[1]!.title = "Overgeared Part 2";
-    expect(resume()).toBeNull();
+    const nextSeasonUrl = "https://voiranime.to/anime/overgeared-2/overgeared-2-01-vostfr/";
+    history.sourceRefs.push({ site: "voiranime", contentKey: "overgeared-2:1:vostfr", entity: "version", entityId: "v1s2", url: nextSeasonUrl });
+    expect(resume()).toEqual({ number: 11 });
+
+    const url = "https://voiranime.to/anime/overgeared/overgeared-11-vostfr/";
+    history.episodes.push({ id: "e11", seasonId: "sa", number: 11 });
+    history.versions.push({ id: "v11", episodeId: "e11", language: "VOSTFR", watched: false });
+    history.sourceRefs.push({ site: "voiranime", contentKey: "overgeared:11:vostfr", entity: "version", entityId: "v11", url });
+    expect(resume()).toEqual({ number: 11, knownUrl: url });
+  });
+
+  it("reprend une version importée non datée sans passer devant une lecture datée", () => {
+    const history = structuredClone(lib);
+    const imported = history.versions[2]!;
+    delete imported.updatedAt;
+    imported.openedAt = 500;
+    const card = () => libraryView(history).animes[0];
+    expect(card()).toMatchObject({
+      lastActivity: 500,
+      lastPlayback: { number: 9, at: 150 },
+    });
+
+    history.versions = history.versions.filter((v) => v.episodeId !== "e9");
+    expect(card()).toMatchObject({
+      resume: { number: 10, knownUrl: history.sourceRefs[0]!.url },
+      lastPlayback: { number: 10, position: 842 },
+    });
+    expect(card()?.lastPlayback?.at).toBeUndefined();
   });
   it("trie par activité, compte VF et VOSTFR une seule fois, propose la reprise", () => {
     const view = libraryView(lib);

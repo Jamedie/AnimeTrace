@@ -26,10 +26,7 @@ export interface RecentAnimeView {
   watchedCount: number;
   /** Total d'épisodes de la saison ; null tant qu'inconnu (catalogue MAL non associé). */
   total: number | null;
-  nextNumber: number;
   lastPosition?: number;
-  /** Source de la dernière version lue. */
-  lastUrl?: string;
 }
 
 export function versionStatus(v: PlaybackVersion): EpisodeStatus {
@@ -40,7 +37,7 @@ export function versionStatus(v: PlaybackVersion): EpisodeStatus {
 export interface LatestPlayback {
   episode: Episode;
   version: PlaybackVersion;
-  at: number;
+  at?: number;
 }
 
 export function indexHistory(lib: Library) {
@@ -76,10 +73,19 @@ export function indexHistory(lib: Library) {
     if (version.watched) watchedEpisodes.add(episode.id);
     const animeId = animeOfSeason.get(episode.seasonId);
     const at = version.updatedAt;
-    if (!animeId || at === undefined) continue;
+    if (!animeId || versionStatus(version) === "opened") continue;
     const previous = latestPlayback.get(animeId);
-    if (!previous || previous.at <= at)
-      latestPlayback.set(animeId, { episode, version, at });
+    if (
+      !previous ||
+      (at !== undefined && (previous.at === undefined || previous.at <= at)) ||
+      (at === undefined && previous.at === undefined &&
+        (previous.version.openedAt ?? 0) <= (version.openedAt ?? 0))
+    )
+      latestPlayback.set(animeId, {
+        episode,
+        version,
+        ...(at !== undefined && { at }),
+      });
   }
   const watchedByAnime = new Map<string, number>();
   for (const episodeId of watchedEpisodes) {
@@ -133,10 +139,12 @@ export function recentAnimes(
   ix = indexHistory(lib),
 ): RecentAnimeView[] {
   return [...ix.latestPlayback]
+    .filter((row): row is [string, LatestPlayback & { at: number }] =>
+      row[1].at !== undefined,
+    )
     .sort(([, a], [, b]) => b.at - a.at)
     .slice(0, limit)
     .map(([animeId, { episode, version, at }]) => {
-      const url = ix.urlOfVersion.get(version.id);
       return {
         animeId,
         title: ix.titles.get(animeId) ?? "?",
@@ -146,9 +154,7 @@ export function recentAnimes(
         lastActivity: at,
         watchedCount: ix.watchedByAnime.get(animeId) ?? 0,
         total: null,
-        nextNumber: version.watched ? episode.number + 1 : episode.number,
         ...(version.position !== undefined && { lastPosition: version.position }),
-        ...(url && { lastUrl: url }),
       };
     });
 }

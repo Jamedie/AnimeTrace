@@ -8,7 +8,7 @@ import type {
 export interface PopupState {
   catalogEnabled: boolean;
   current: (CurrentEpisodeView & CoverInfo) | null;
-  recent: (RecentAnimeView & CoverInfo & { nextUrl: string | null })[];
+  recent: (RecentAnimeView & CoverInfo & { nextNumber: number; nextUrl: string | null })[];
   /** Lecteurs présents sur la page de l'onglet, mais non autorisés. */
   blockedPlayers: string[];
   /** Lecteurs connus du site, non encore autorisés : demandés en même temps. */

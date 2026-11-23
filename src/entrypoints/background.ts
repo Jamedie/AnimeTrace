@@ -19,9 +19,12 @@ import {
 } from "../adapters/storage/history-store";
 import { syncContentScripts } from "../adapters/browser/content-scripts";
 import {
+  bindPlaybackTab,
+  clearPlaybackTab,
   matchesDocument,
   playbackDocument,
-  type PlaybackDocument,
+  readPlaybackTab,
+  savePlaybackPlayers,
 } from "../adapters/browser/playback-document";
 import {
   currentEpisodeView,
@@ -34,7 +37,7 @@ import {
   redirectedPlayerHosts,
 } from "../core/domains/origins";
 import { createOperation } from "../core/sync/operations";
-import { connectors, findConnector } from "../connectors";
+import { findConnector } from "../connectors";
 import type {
   BackupRequest,
   CloudRequest,
@@ -52,7 +55,7 @@ import {
   saveLink,
 } from "../adapters/storage/catalog-store";
 import * as cloudSync from "../adapters/supabase/sync";
-import { libraryView, type AnimeCardView } from "../core/history/library-view";
+import { libraryView } from "../core/history/library-view";
 import { buildBackupFile, parseBackupFile } from "../core/backup/backup-file";
 import { buildLegacyExportFile } from "../core/backup/legacy-export";
 import {
@@ -71,15 +74,6 @@ type Message =
   | CloudRequest
   | MalRequest
   | BackupRequest;
-
-interface TabBinding extends PlaybackDocument {
-  versionId: string;
-  site: string;
-}
-
-interface TabPlayers extends PlaybackDocument {
-  srcs: string[];
-}
 
 async function isGranted(host: string): Promise<boolean> {
   return browser.permissions.contains({ origins: [originPattern(host)] });
@@ -111,21 +105,16 @@ async function notGranted(hosts: string[]): Promise<string[]> {
 }
 
 /** État de la fenêtre de l'icône pour l'onglet actif. */
-async function popupState(
+export async function popupState(
   db: Database,
   tabId: number | null,
 ): Promise<PopupState> {
   const lib = await readLibrary(db);
-  const session =
+  const { binding, playerSrcs } =
     tabId === null
-      ? {}
-      : await browser.storage.session.get([`tab:${tabId}`, `players:${tabId}`]);
-  const saved = session[`tab:${tabId}`] as TabBinding | undefined;
-  const active = tabId === null || !saved ? null : await playbackDocument(tabId);
-  const binding = matchesDocument(active, saved) ? saved : undefined;
+      ? { binding: undefined, playerSrcs: [] }
+      : await readPlaybackTab(tabId);
   const pageHost = binding?.url ? new URL(binding.url).hostname : "";
-  const players = session[`players:${tabId}`] as TabPlayers | undefined;
-  const playerSrcs = matchesDocument(active, players) ? players?.srcs ?? [] : [];
   const pagePlayers = [
     ...playerHosts(playerSrcs, pageHost),
     ...(binding && tabId !== null
@@ -165,8 +154,8 @@ async function popupState(
       return {
         ...r,
         ...cover(r.animeId),
-        nextNumber: resume?.number ?? r.nextNumber,
-        nextUrl: resumeUrl(resume),
+        nextNumber: resume?.number ?? r.lastNumber,
+        nextUrl: resume?.knownUrl ?? null,
       };
     }),
     blockedPlayers,
@@ -182,19 +171,10 @@ async function libraryState(db: Database): Promise<LibraryState> {
   const view = libraryView(await readLibrary(db), await readCatalog(db));
   const resumeUrls: Record<string, string | null> = {};
   for (const a of view.animes)
-    resumeUrls[a.id] = resumeUrl(a.resume);
+    resumeUrls[a.id] = a.resume?.knownUrl ?? null;
   return { ...view, resumeUrls };
 }
 
-function resumeUrl(resume: AnimeCardView["resume"] | undefined): string | null {
-  if (!resume?.knownUrl) return null;
-  if (!resume.inferUrl) return resume.knownUrl;
-  for (const c of connectors) {
-    const next = c.episodeUrl(resume.knownUrl, resume.number);
-    if (next) return next;
-  }
-  return null;
-}
 
 /** Identifiant stable de cet ordinateur, pour le journal de synchronisation. */
 async function getDeviceId(): Promise<string> {
@@ -386,7 +366,6 @@ export default defineBackground(() => {
       const tabId = sender.tab?.id;
       const frameId = sender.frameId;
       if (tabId === undefined || frameId === undefined || !sender.documentId) return;
-      const tabKey = `tab:${tabId}`;
       queue = queue
         .then(async () => {
           const { db, deviceId } = await ready;
@@ -401,28 +380,25 @@ export default defineBackground(() => {
               Date.now(),
             );
             // Associe l'onglet à cette version pour les rapports du lecteur.
-            const binding: TabBinding = {
+            await bindPlaybackTab(tabId, {
               ...active,
               versionId: version.id,
               site: message.observation.site,
-            };
-            await browser.storage.session.set({ [tabKey]: binding });
+            });
           } else if (message.type === "page.clear" && frameId === 0) {
             if (!matchesDocument(active, sender)) return;
-            await browser.storage.session.remove([tabKey, `players:${tabId}`]);
+            await clearPlaybackTab(tabId);
             return;
           } else if (message.type === "players" && frameId === 0) {
             if (!matchesDocument(active, sender)) return;
-            const players: TabPlayers = { ...active, srcs: message.srcs };
-            await browser.storage.session.set({
-              [`players:${tabId}`]: players,
+            await savePlaybackPlayers(tabId, {
+              ...active,
+              srcs: message.srcs,
             });
             return;
           } else if (message.type === "progress") {
-            const binding = (await browser.storage.session.get(tabKey))[
-              tabKey
-            ] as TabBinding | undefined;
-            if (!binding || !matchesDocument(active, binding)) return;
+            const { binding } = await readPlaybackTab(tabId, active);
+            if (!binding) return;
             const player =
               frameId === 0 ? active : await playbackDocument(tabId, frameId);
             if (!matchesDocument(player, sender)) return;
@@ -461,7 +437,7 @@ export default defineBackground(() => {
   };
 
   browser.tabs.onRemoved.addListener(
-    (id) => void browser.storage.session.remove([`tab:${id}`, `players:${id}`]),
+    (id) => void clearPlaybackTab(id),
   );
   // Nouveau domaine accordé ou retiré : les scripts suivent.
   browser.permissions.onAdded.addListener(() => void syncContentScripts());

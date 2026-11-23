@@ -625,7 +625,9 @@ function panel(a: AnimeCardView, s: LibraryState): HTMLElement {
                 (a.lastPlayback.position === undefined
                   ? ""
                   : ` · ${formatTime(a.lastPlayback.position)}`) +
-                ` · ${relativeTime(a.lastActivity)}`,
+                (a.lastPlayback.at === undefined
+                  ? ""
+                  : ` · ${relativeTime(a.lastPlayback.at)}`),
             )
           : null,
       ),
@@ -684,7 +686,7 @@ function render() {
     h("b", {}, String(s.totals.watchedEpisodes)),
     ` épisode${s.totals.watchedEpisodes > 1 ? "s" : ""} vu${s.totals.watchedEpisodes > 1 ? "s" : ""}`,
     s.totals.lastActivity
-      ? ` · dernière lecture ${relativeTime(s.totals.lastActivity)}`
+      ? ` · dernière activité ${relativeTime(s.totals.lastActivity)}`
       : "",
   );
 
