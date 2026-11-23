@@ -88,14 +88,12 @@ describe("vues de la fenêtre de l’icône", () => {
       lastNumber: 3,
       lastStatus: "progress",
       watchedCount: 2,
-      nextNumber: 3,
       total: null,
-      lastUrl: expect.stringContaining("voiranime.to"),
+      lastPosition: 300,
     });
     expect(rows[1]).toMatchObject({
       lastNumber: 4,
       lastStatus: "watched",
-      nextNumber: 5,
     });
   });
 

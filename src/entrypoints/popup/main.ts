@@ -80,10 +80,11 @@ function currentCard(c: PopupState["current"] & {}): HTMLElement {
 }
 
 function recentRow(r: PopupState["recent"][number]): HTMLElement {
+  const position = r.lastPosition === undefined ? "" : ` à ${formatTime(r.lastPosition)}`;
   const meta =
     r.lastStatus === "watched"
       ? `Ép. ${r.lastNumber} vu ${relativeTime(r.lastActivity)}`
-      : `Ép. ${r.lastNumber} en cours · ${relativeTime(r.lastActivity)}`;
+      : `Ép. ${r.lastNumber} en cours${position} · ${relativeTime(r.lastActivity)}`;
   const pips = h("div", { class: "pips" });
   // Une puce par épisode vu (10 max), puis le compteur ; total inconnu tant que MAL n'est pas associé.
   for (let i = 0; i < Math.min(r.watchedCount, 10); i++) pips.append(h("b"));

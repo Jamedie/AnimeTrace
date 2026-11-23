@@ -8,7 +8,7 @@ import type {
 export interface PopupState {
   catalogEnabled: boolean;
   current: (CurrentEpisodeView & CoverInfo) | null;
-  recent: (RecentAnimeView & CoverInfo & { nextUrl: string | null })[];
+  recent: (RecentAnimeView & CoverInfo & { nextNumber: number; nextUrl: string | null })[];
   /** Lecteurs présents sur la page de l'onglet, mais non autorisés. */
   blockedPlayers: string[];
   /** Lecteurs connus du site, non encore autorisés : demandés en même temps. */
@@ -35,7 +35,7 @@ export type PageRequest =
 
 export type LibraryState =
   import("../core/history/library-view").LibraryView & {
-    /** Adresse de reprise par anime (épisode suivant sur l'adresse la plus récente). */
+    /** Source de lecture pour la reprise de chaque anime, lorsqu'elle est disponible. */
     resumeUrls: Record<string, string | null>;
   };
 
