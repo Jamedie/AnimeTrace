@@ -18,7 +18,16 @@ import {
   recordProgress,
 } from "../adapters/storage/history-store";
 import { syncContentScripts } from "../adapters/browser/content-scripts";
-import { currentEpisodeView, recentAnimes } from "../core/history/views";
+import {
+  matchesDocument,
+  playbackDocument,
+  type PlaybackDocument,
+} from "../adapters/browser/playback-document";
+import {
+  currentEpisodeView,
+  indexHistory,
+  recentAnimes,
+} from "../core/history/views";
 import {
   originPattern,
   playerHosts,
@@ -43,7 +52,7 @@ import {
   saveLink,
 } from "../adapters/storage/catalog-store";
 import * as cloudSync from "../adapters/supabase/sync";
-import { libraryView } from "../core/history/library-view";
+import { libraryView, type AnimeCardView } from "../core/history/library-view";
 import { buildBackupFile, parseBackupFile } from "../core/backup/backup-file";
 import { buildLegacyExportFile } from "../core/backup/legacy-export";
 import {
@@ -54,6 +63,7 @@ import {
 
 type Message =
   | { type: "episode"; observation: EpisodeObservation }
+  | { type: "page.clear" }
   | { type: "progress"; report: ProgressReport }
   | { type: "players"; srcs: string[] }
   | { type: "probe.result" }
@@ -62,10 +72,13 @@ type Message =
   | MalRequest
   | BackupRequest;
 
-interface TabBinding {
+interface TabBinding extends PlaybackDocument {
   versionId: string;
   site: string;
-  url?: string;
+}
+
+interface TabPlayers extends PlaybackDocument {
+  srcs: string[];
 }
 
 async function isGranted(host: string): Promise<boolean> {
@@ -107,24 +120,18 @@ async function popupState(
     tabId === null
       ? {}
       : await browser.storage.session.get([`tab:${tabId}`, `players:${tabId}`]);
-  const binding = session[`tab:${tabId}`] as TabBinding | undefined;
+  const saved = session[`tab:${tabId}`] as TabBinding | undefined;
+  const active = tabId === null || !saved ? null : await playbackDocument(tabId);
+  const binding = matchesDocument(active, saved) ? saved : undefined;
   const pageHost = binding?.url ? new URL(binding.url).hostname : "";
-  const playerSrcs =
-    (session[`players:${tabId}`] as string[] | undefined) ?? [];
+  const players = session[`players:${tabId}`] as TabPlayers | undefined;
+  const playerSrcs = matchesDocument(active, players) ? players?.srcs ?? [] : [];
   const pagePlayers = [
     ...playerHosts(playerSrcs, pageHost),
     ...(binding && tabId !== null
       ? await frameHosts(tabId, playerSrcs, pageHost)
       : []),
   ];
-  const nextUrl = (url: string | undefined, n: number) => {
-    if (!url) return null;
-    for (const c of connectors) {
-      const next = c.episodeUrl(url, n);
-      if (next) return next;
-    }
-    return null;
-  };
   const blockedPlayers = binding
     ? await notGranted([...new Set(pagePlayers)])
     : [];
@@ -135,8 +142,11 @@ async function popupState(
   const suggestedPlayers = blockedPlayers.length
     ? await notGranted(known.filter((h) => !blockedPlayers.includes(h)))
     : [];
+  const history = indexHistory(lib);
   const cards = new Map(
-    libraryView(lib, await readCatalog(db)).animes.map((a) => [a.id, a]),
+    libraryView(lib, await readCatalog(db), Date.now(), history).animes.map(
+      (a) => [a.id, a],
+    ),
   );
   const cover = (animeId: string): CoverInfo => {
     const a = cards.get(animeId);
@@ -146,15 +156,19 @@ async function popupState(
       ...(a && { seasonNumber: a.seasonNumber }),
     };
   };
-  const current = binding ? currentEpisodeView(lib, binding.versionId) : null;
+  const current = binding ? currentEpisodeView(lib, binding.versionId, history) : null;
   return {
     catalogEnabled: await hasMalAccess(),
     current: current ? { ...current, ...cover(current.animeId) } : null,
-    recent: recentAnimes(lib).map((r) => ({
-      ...r,
-      ...cover(r.animeId),
-      nextUrl: nextUrl(r.lastUrl, r.nextNumber),
-    })),
+    recent: recentAnimes(lib, 3, history).map((r) => {
+      const resume = cards.get(r.animeId)?.resume;
+      return {
+        ...r,
+        ...cover(r.animeId),
+        nextNumber: resume?.number ?? r.nextNumber,
+        nextUrl: resumeUrl(resume),
+      };
+    }),
     blockedPlayers,
     suggestedPlayers,
     framesVisible: await browser.permissions.contains({
@@ -168,15 +182,15 @@ async function libraryState(db: Database): Promise<LibraryState> {
   const view = libraryView(await readLibrary(db), await readCatalog(db));
   const resumeUrls: Record<string, string | null> = {};
   for (const a of view.animes)
-    resumeUrls[a.id] = a.resume?.knownUrl
-      ? episodeUrl(a.resume.knownUrl, a.resume.number)
-      : null;
+    resumeUrls[a.id] = resumeUrl(a.resume);
   return { ...view, resumeUrls };
 }
 
-function episodeUrl(knownUrl: string, n: number): string | null {
+function resumeUrl(resume: AnimeCardView["resume"] | undefined): string | null {
+  if (!resume?.knownUrl) return null;
+  if (!resume.inferUrl) return resume.knownUrl;
   for (const c of connectors) {
-    const next = c.episodeUrl(knownUrl, n);
+    const next = c.episodeUrl(resume.knownUrl, resume.number);
     if (next) return next;
   }
   return null;
@@ -370,12 +384,16 @@ export default defineBackground(() => {
       if (message.type === "probe.result") return; // destiné à la fenêtre de l'icône
 
       const tabId = sender.tab?.id;
-      if (tabId === undefined || !sender.url) return;
+      const frameId = sender.frameId;
+      if (tabId === undefined || frameId === undefined || !sender.documentId) return;
       const tabKey = `tab:${tabId}`;
       queue = queue
         .then(async () => {
           const { db, deviceId } = await ready;
-          if (message.type === "episode" && sender.frameId === 0) {
+          const active = await playbackDocument(tabId);
+          if (!active) return;
+          if (message.type === "episode" && frameId === 0) {
+            if (!matchesDocument(active, sender)) return;
             const version = await recordOpened(
               db,
               message.observation,
@@ -384,20 +402,30 @@ export default defineBackground(() => {
             );
             // Associe l'onglet à cette version pour les rapports du lecteur.
             const binding: TabBinding = {
+              ...active,
               versionId: version.id,
               site: message.observation.site,
-              url: sender.tab?.url,
             };
             await browser.storage.session.set({ [tabKey]: binding });
-          } else if (message.type === "players" && sender.frameId === 0) {
+          } else if (message.type === "page.clear" && frameId === 0) {
+            if (!matchesDocument(active, sender)) return;
+            await browser.storage.session.remove([tabKey, `players:${tabId}`]);
+            return;
+          } else if (message.type === "players" && frameId === 0) {
+            if (!matchesDocument(active, sender)) return;
+            const players: TabPlayers = { ...active, srcs: message.srcs };
             await browser.storage.session.set({
-              [`players:${tabId}`]: message.srcs,
+              [`players:${tabId}`]: players,
             });
+            return;
           } else if (message.type === "progress") {
             const binding = (await browser.storage.session.get(tabKey))[
               tabKey
             ] as TabBinding | undefined;
-            if (!binding || binding.url !== sender.tab?.url) return;
+            if (!binding || !matchesDocument(active, binding)) return;
+            const player =
+              frameId === 0 ? active : await playbackDocument(tabId, frameId);
+            if (!matchesDocument(player, sender)) return;
             await recordProgress(
               db,
               binding.versionId,

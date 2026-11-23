@@ -35,7 +35,7 @@ export type PageRequest =
 
 export type LibraryState =
   import("../core/history/library-view").LibraryView & {
-    /** Adresse de reprise par anime (épisode suivant sur l'adresse la plus récente). */
+    /** Source de lecture pour la reprise de chaque anime, lorsqu'elle est disponible. */
     resumeUrls: Record<string, string | null>;
   };
 

@@ -114,7 +114,7 @@ function card(a: AnimeCardView, s: LibraryState): HTMLElement {
   const overlay = h(
     "div",
     { class: "overlay" },
-    resumeUrl && a.resume && a.status !== "completed"
+    resumeUrl && a.resume
       ? h(
           "a",
           { class: "btn", href: resumeUrl, target: "_blank", rel: "noopener" },
@@ -574,7 +574,7 @@ function panel(a: AnimeCardView, s: LibraryState): HTMLElement {
       h(
         "div",
         { class: "panel-actions" },
-        resumeUrl && a.resume && a.status !== "completed"
+        resumeUrl && a.resume
           ? h(
               "a",
               {
@@ -617,7 +617,17 @@ function panel(a: AnimeCardView, s: LibraryState): HTMLElement {
           {},
           `${a.watchedCount} épisode${a.watchedCount > 1 ? "s" : ""} vu${a.watchedCount > 1 ? "s" : ""}${a.total ? ` sur ${a.total}` : ""} · VF et VOSTFR comptent une fois`,
         ),
-        h("span", {}, `Dernière lecture ${relativeTime(a.lastActivity)}`),
+        a.lastPlayback
+          ? h(
+              "span",
+              {},
+              `Dernière lecture · ép. ${a.lastPlayback.number} · ${a.lastPlayback.language}` +
+                (a.lastPlayback.position === undefined
+                  ? ""
+                  : ` · ${formatTime(a.lastPlayback.position)}`) +
+                ` · ${relativeTime(a.lastActivity)}`,
+            )
+          : null,
       ),
     ),
   );

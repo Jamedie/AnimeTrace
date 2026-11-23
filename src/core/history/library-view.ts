@@ -2,7 +2,12 @@
 // Fonction pure ; la page affiche le résultat sans recalcul (PARCOURS-INTERFACE.md §2).
 
 import type { Library } from "../../shared/model";
-import { versionStatus, type EpisodeStatus } from "./views";
+import {
+  indexHistory,
+  versionStatus,
+  type EpisodeStatus,
+  type LatestPlayback,
+} from "./views";
 import {
   knownTotal,
   type CatalogLink,
@@ -74,7 +79,8 @@ export interface AnimeCardView {
   total: number | null;
   lastActivity: number;
   /** Prochain épisode à regarder : le dernier en cours, sinon le suivant du dernier vu. */
-  resume: { number: number; knownUrl?: string } | null;
+  resume: { number: number; knownUrl?: string; inferUrl?: true } | null;
+  lastPlayback?: { number: number; language: string; position?: number };
   status: "in-progress" | "completed";
   /** Numéro de saison lu dans le titre observé, en attendant mieux. */
   seasonNumber: number;
@@ -95,27 +101,67 @@ export function libraryView(
   lib: Library,
   catalog: CatalogInput = { links: [], entries: [], malSync: [] },
   now = Date.now(),
+  history = indexHistory(lib),
 ): LibraryView {
   const linkOf = new Map(catalog.links.map((l) => [l.seasonId, l]));
   const entryOf = new Map(catalog.entries.map((e) => [e.id, e]));
   const malSyncOf = new Map(catalog.malSync.map((m) => [m.malId, m]));
-  const urlOf = new Map(
-    lib.sourceRefs
-      .filter((r) => r.entity === "version" && r.url)
-      .map((r) => [r.entityId, r.url!]),
+  const { urlOfVersion, versionsByEpisode, episodesBySeason } = history;
+  const confirmedEntry = (seasonId: string) => {
+    const link = linkOf.get(seasonId);
+    return link?.status === "confirmed" && link.malId !== undefined
+      ? entryOf.get(link.malId)
+      : undefined;
+  };
+  const seasonTitles = new Map(
+    lib.seasons.flatMap(({ id }) => {
+      const entry = confirmedEntry(id);
+      if (!entry || ["movie", "special", "music"].includes(entry.media_type ?? ""))
+        return [];
+      const titles = [entry.alternative_titles?.en, entry.title];
+      // Un suffixe « Part 2 » ou un numéro isolé ne confirme pas une saison suivante.
+      const explicit = titles.find((title) =>
+        title && /\b(?:season|saison)\s+\d+\b|\b(?:\d+(?:st|nd|rd|th)|first|second|third|fourth|fifth|sixth)\s+season\b/i.test(title)
+      );
+      const title = parseTitle(explicit ?? entry.alternative_titles?.en ?? entry.title);
+      if (!explicit && title.season !== 1) return [];
+      return [[id, title] as const];
+    }),
   );
-  const versionsByEpisode = new Map<string, Library["versions"]>();
-  for (const v of lib.versions)
-    versionsByEpisode.set(v.episodeId, [
-      ...(versionsByEpisode.get(v.episodeId) ?? []),
-      v,
-    ]);
-  const episodesBySeason = new Map<string, Library["episodes"]>();
-  for (const e of lib.episodes)
-    episodesBySeason.set(e.seasonId, [
-      ...(episodesBySeason.get(e.seasonId) ?? []),
-      e,
-    ]);
+  const resumeFrom = (
+    playback: LatestPlayback,
+  ): AnimeCardView["resume"] => {
+    const { episode, version } = playback;
+    const knownUrl = urlOfVersion.get(version.id);
+    if (!version.watched)
+      return { number: episode.number, ...(knownUrl && { knownUrl }) };
+
+    let number = episode.number + 1;
+    const total = knownTotal(confirmedEntry(episode.seasonId));
+    let seasonId = episode.seasonId;
+    if (total !== null && episode.number >= total) {
+      const title = seasonTitles.get(seasonId);
+      const nextSeasons = title
+        ? [...seasonTitles].filter(
+            ([, next]) => next.base === title.base && next.season === title.season + 1,
+          )
+        : [];
+      if (nextSeasons.length !== 1) return null;
+      seasonId = nextSeasons[0]![0];
+      number = 1;
+    }
+
+    const next = episodesBySeason.get(seasonId)?.find((e) => e.number === number);
+    const sources = next
+      ? (versionsByEpisode.get(next.id) ?? []).filter((v) => urlOfVersion.has(v.id))
+      : [];
+    const preferred = sources.find((v) => v.language === version.language) ?? sources[0];
+    if (preferred) return { number, knownUrl: urlOfVersion.get(preferred.id)! };
+    if (seasonId !== episode.seasonId) return null;
+    return total !== null && knownUrl
+      ? { number, knownUrl, inferUrl: true }
+      : { number };
+  };
 
   const describe = (id: number): CatalogView["candidates"][number] => {
     const e = entryOf.get(id);
@@ -157,15 +203,9 @@ export function libraryView(
   const animes: AnimeCardView[] = [];
   let nextExpirationAt: number | undefined;
   for (const anime of lib.animes) {
-    let lastActivity = 0;
     let lastOpenedAt = 0;
     let hasPlayback = false;
-    let last: {
-      number: number;
-      watched: boolean;
-      url?: string;
-      at: number;
-    } | null = null;
+    const playback = history.latestPlayback.get(anime.id);
 
     const seasons: SeasonView[] = lib.seasons
       .filter((s) => s.animeId === anime.id)
@@ -175,11 +215,10 @@ export function libraryView(
             const versions: VersionView[] = (versionsByEpisode.get(ep.id) ?? [])
               .map((v) => {
                 const status = versionStatus(v);
-                if (status !== "opened" || (v.position ?? 0) > 0)
-                  hasPlayback = true;
+                if (status !== "opened") hasPlayback = true;
                 lastOpenedAt = Math.max(lastOpenedAt, v.openedAt ?? 0);
                 const at = v.updatedAt ?? v.openedAt;
-                const url = urlOf.get(v.id);
+                const url = urlOfVersion.get(v.id);
                 return {
                   language: v.language,
                   status,
@@ -190,17 +229,8 @@ export function libraryView(
                 };
               })
               .sort((a, b) => (b.at ?? 0) - (a.at ?? 0));
-            const watched = versions.some((v) => v.status === "watched");
+            const watched = history.watchedEpisodes.has(ep.id);
             const latest = versions[0];
-            if (latest?.at && latest.at > lastActivity) {
-              lastActivity = latest.at;
-              last = {
-                number: ep.number,
-                watched,
-                at: latest.at,
-                ...(latest.url && { url: latest.url }),
-              };
-            }
             return {
               number: ep.number,
               watched,
@@ -231,17 +261,13 @@ export function libraryView(
     }
 
     const watchedCount = seasons.reduce((n, s) => n + s.watchedCount, 0);
-    const lastSeen = last as {
-      number: number;
-      watched: boolean;
-      url?: string;
-    } | null;
-    const resume = lastSeen
-      ? {
-          number: lastSeen.watched ? lastSeen.number + 1 : lastSeen.number,
-          ...(lastSeen.url && { knownUrl: lastSeen.url }),
-        }
-      : null;
+    const lastActivity = playback?.at ?? lastOpenedAt;
+    const resume = playback ? resumeFrom(playback) : null;
+    const lastPlayback = playback && {
+      number: playback.episode.number,
+      language: playback.version.language,
+      ...(playback.version.position !== undefined && { position: playback.version.position }),
+    };
     // « Terminé » seulement si le total est connu (catalogue MAL) : jamais déduit sans lui.
     const total = seasons.length === 1 ? seasons[0]!.total : null;
     const status =
@@ -256,6 +282,7 @@ export function libraryView(
       total,
       lastActivity,
       resume,
+      ...(lastPlayback && { lastPlayback }),
       status,
       seasonNumber: parseTitle(anime.observedTitle).season,
       catalog: catalogView(seasons[0]?.id),

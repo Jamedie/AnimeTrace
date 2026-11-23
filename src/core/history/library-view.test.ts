@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Library } from "../../shared/model";
 import { groupEpisodes, libraryView, type EpisodeView } from "./library-view";
+import { recentAnimes } from "./views";
 
 const lib: Library = {
   schemaVersion: 1,
@@ -63,6 +64,72 @@ const lib: Library = {
 };
 
 describe("bibliothèque", () => {
+  it("compte les épisodes par saison et reprend la dernière lecture sans emprunter une source", () => {
+    const history = structuredClone(lib);
+    history.seasons.push({ id: "sa2", animeId: "a", provisional: true });
+    history.episodes.push(
+      { id: "a1s1", seasonId: "sa", number: 1 },
+      { id: "a1s2", seasonId: "sa2", number: 1 },
+      { id: "a8s2", seasonId: "sa2", number: 8 },
+    );
+    history.versions.push(
+      { id: "s1-1", episodeId: "a1s1", language: "VF", watched: true, updatedAt: 210 },
+      { id: "s2-1", episodeId: "a1s2", language: "VOSTFR", watched: true, updatedAt: 220 },
+      { id: "s2-1-vf", episodeId: "a1s2", language: "VF", watched: false, position: 600, updatedAt: 230 },
+      { id: "s2-8", episodeId: "a8s2", language: "VF", watched: false, openedAt: 240 },
+    );
+
+    const recent = recentAnimes(history)[0]!;
+    expect(recent).toMatchObject({ watchedCount: 3, lastNumber: 1, lastLanguage: "VF" });
+    expect(recent.lastUrl).toBeUndefined();
+    const card = libraryView(history).animes[0];
+    expect(card).toMatchObject({
+      watchedCount: 3,
+      resume: { number: 1 },
+      lastPlayback: { number: 1, language: "VF", position: 600 },
+    });
+    expect(card?.resume?.knownUrl).toBeUndefined();
+  });
+
+  it("exige une source connue pour l'épisode suivant si le total est inconnu", () => {
+    const history = structuredClone(lib);
+    history.versions[2]!.watched = true;
+    const resume = () => libraryView(history).animes[0]?.resume;
+    expect(resume()).toEqual({ number: 11 });
+
+    const url = "https://voiranime.to/anime/overgeared/overgeared-11-vostfr/";
+    history.episodes.push({ id: "e11", seasonId: "sa", number: 11 });
+    history.versions.push({ id: "v11", episodeId: "e11", language: "VOSTFR", watched: false });
+    history.sourceRefs.push({ site: "voiranime", contentKey: "overgeared:11:vostfr", entity: "version", entityId: "v11", url });
+    expect(resume()).toEqual({ number: 11, knownUrl: url });
+  });
+
+  it("propose la source de l'épisode 1 de la saison suivante si elle est identifiée", () => {
+    const history = structuredClone(lib);
+    history.versions[2]!.watched = true;
+    history.animes.push({ id: "a2", observedTitle: "Overgeared Saison 2" });
+    history.seasons.push({ id: "sa2", animeId: "a2", provisional: false });
+    history.episodes.push({ id: "e1s2", seasonId: "sa2", number: 1 });
+    history.versions.push({ id: "v1s2", episodeId: "e1s2", language: "VOSTFR", watched: false });
+    const catalog = {
+      links: [
+        { seasonId: "sa", malId: 1, status: "confirmed", at: 1 },
+        { seasonId: "sa2", malId: 2, status: "confirmed", at: 1 },
+      ],
+      entries: [
+        { id: 1, title: "Overgeared", num_episodes: 10, fetchedAt: 1 },
+        { id: 2, title: "Overgeared Season 2", num_episodes: 12, fetchedAt: 1 },
+      ],
+      malSync: [],
+    } satisfies Parameters<typeof libraryView>[1];
+    const resume = () => libraryView(history, catalog).animes.find((a) => a.id === "a")?.resume;
+    expect(resume()).toBeNull();
+    const url = "https://voiranime.to/anime/overgeared-2/overgeared-2-01-vostfr/";
+    history.sourceRefs.push({ site: "voiranime", contentKey: "overgeared-2:1:vostfr", entity: "version", entityId: "v1s2", url });
+    expect(resume()).toEqual({ number: 1, knownUrl: url });
+    catalog.entries[1]!.title = "Overgeared Part 2";
+    expect(resume()).toBeNull();
+  });
   it("trie par activité, compte VF et VOSTFR une seule fois, propose la reprise", () => {
     const view = libraryView(lib);
     expect(view.animes.map((a) => a.title)).toEqual(["Overgeared", "Dandadan"]);
@@ -104,6 +171,13 @@ describe("bibliothèque", () => {
     expect(after.nextExpirationAt).toBeUndefined();
     expect(after.animes.map((anime) => anime.id)).toEqual(["a"]);
     expect(after.totals.animes).toBe(1);
+
+    // Le prochain instantané contient la progression reçue d'un autre appareil.
+    const playedAt = openedAt + 2;
+    history.versions[3] = { ...opened, updatedAt: playedAt, position: 42 };
+    expect(libraryView(history, undefined, expiresAt).animes.find((a) => a.id === "b"))
+      .toMatchObject({ lastActivity: playedAt, lastPlayback: { number: 1, position: 42 } });
+    history.versions[3] = opened;
 
     history.versions.push({
       ...opened,

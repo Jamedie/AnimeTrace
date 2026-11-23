@@ -28,7 +28,7 @@ Ouverte par un clic sur l’icône de l’extension.
 | Site non pris en charge                                | « Site non pris en charge », rien n’est enregistré.                                                                          |
 | Autorisation Brave refusée                             | Explication courte et possibilité de réessayer.                                                                              |
 
-Section **Récemment** (toujours présente sous l’état de la page) : derniers animes regardés, triés par dernière lecture, avec affiche, dernier épisode vu et date relative, progression de la saison (« 3 / 13 », « 1 / ? ») et bouton vers l’épisode suivant (« Ép. 4 ») qui ouvre l’adresse la plus récente du site. Un anime n’apparaît qu’une fois, quelle que soit la version regardée.
+Section **Récemment** (toujours présente sous l’état de la page) : derniers animes regardés, triés par dernière lecture, avec affiche, épisode et version lus, date relative, compteur et lien de reprise si disponible. Un anime n’apparaît qu’une fois et chaque épisode compte une fois dans sa saison.
 
 Actions de pied de fenêtre : bibliothèque, synchronisation immédiate (cloud et MAL), réglages.
 
@@ -41,7 +41,7 @@ Page complète de l’extension.
 - **Liste des animes** avec affiche MAL, titre, saison en cours, progression (« 9 / 12 », ou « 9 / ? » si total inconnu).
 - **Filtres** : en cours, terminés, à confirmer. Aucun filtre En pause/Abandonné.
 - **Fiche d’un anime** : saisons, puis épisodes ; pour chaque épisode les versions de lecture avec leur position. Un épisode vu en VF et en VOSTFR compte une seule fois.
-- **Bouton « Reprendre »** : ouvre le prochain épisode sur l’adresse la plus récente du site.
+- **Bouton « Reprendre »** : ouvre la dernière version commencée ou, après une version terminée, l’épisode suivant. Une simple ouverture de page laisse la reprise à sa place. Quand le total est inconnu, l’épisode suivant doit avoir une source connue dans sa saison. Le passage à la saison suivante exige une saison identifiée et une source pour son épisode 1. La fiche affiche la dernière progression même si le lien est indisponible.
 - **Affiche absente** (catalogue non associé ou indisponible) : visuel de remplacement.
 - **Nettoyage automatique**. Un anime dont seules des pages d’épisodes ont été consultées disparaît de la bibliothèque sept jours après la dernière ouverture. Une nouvelle ouverture le fait réapparaître. Dès qu’un épisode a été lancé, l’anime reste dans la bibliothèque, même avec zéro épisode vu. Les données de synchronisation restent disponibles pour appliquer une progression reçue d’un autre appareil.
 

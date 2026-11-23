@@ -9,19 +9,15 @@ export default defineContentScript({
   matches: ["https://voiranime.cx/*"],
   registration: "runtime",
   runAt: "document_idle",
-  main() {
+  main(ctx) {
     const w = window as unknown as { __animetracePage?: boolean };
     if (w.__animetracePage) return;
     w.__animetracePage = true;
-    const observation = observeEpisode(document, new URL(location.href));
-    if (!observation) return;
-    browser.runtime
-      .sendMessage({ type: "episode", observation })
-      .catch(() => {});
-
     // Le changement de lecteur (myTV, MOON, VOE…) remplace l'iframe : on suit ces changements.
-    let last = "";
+    let last: string | undefined;
+    let episodePage = false;
     const reportPlayers = () => {
+      if (!episodePage) return;
       // Seuls les cadres de taille lecteur comptent : on écarte les petits cadres publicitaires.
       const srcs = [...document.querySelectorAll("iframe")]
         .filter((f) => f.offsetWidth >= 300 && f.offsetHeight >= 150)
@@ -32,7 +28,21 @@ export default defineContentScript({
       last = key;
       browser.runtime.sendMessage({ type: "players", srcs }).catch(() => {});
     };
-    reportPlayers();
+    const reportPage = () => {
+      const observation = observeEpisode(document, new URL(location.href));
+      episodePage = !!observation;
+      last = undefined;
+      browser.runtime
+        .sendMessage(
+          observation ? { type: "episode", observation } : { type: "page.clear" },
+        )
+        .catch(() => {});
+      reportPlayers();
+    };
+    reportPage();
+    ctx.addEventListener(window, "pageshow", (event) => {
+      if (event.persisted) reportPage();
+    });
     let timer: ReturnType<typeof setTimeout> | undefined;
     new MutationObserver(() => {
       clearTimeout(timer);
