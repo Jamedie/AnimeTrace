@@ -1,12 +1,10 @@
-// Synchronisation cloud : envoie le journal local, récupère celui des autres ordinateurs,
-// et importe l'historique 0.3.6 tant que la transition n'est pas close (ARCHITECTURE.md §9 et §11).
+// Synchronisation cloud du journal d’opérations entre ordinateurs.
 
 import { browser } from "wxt/browser";
 import type { Database } from "../storage/database";
 import {
   applyRemoteOperations,
   getCursor,
-  importLegacyHistory,
   pendingOperations,
   removeOperations,
 } from "../storage/sync-store";
@@ -19,7 +17,6 @@ export interface CloudStatus {
   lastSuccess?: number;
   error?: string;
   pending: number;
-  legacy: { closed: boolean; lastImport?: number; versions?: number };
 }
 
 interface Stored {
@@ -29,9 +26,6 @@ interface Stored {
   cloudEmail?: string;
   cloudLastSuccess?: number;
   cloudError?: string;
-  legacyClosed?: boolean;
-  legacyLastImport?: number;
-  legacyVersions?: number;
 }
 
 const KEYS: (keyof Stored)[] = [
@@ -41,11 +35,7 @@ const KEYS: (keyof Stored)[] = [
   "cloudEmail",
   "cloudLastSuccess",
   "cloudError",
-  "legacyClosed",
-  "legacyLastImport",
-  "legacyVersions",
 ];
-const LEGACY_IMPORT_EVERY = 10 * 60_000;
 const PULL_OVERLAP = 50;
 
 /**
@@ -78,11 +68,6 @@ export async function status(db: Database): Promise<CloudStatus> {
     ...(s.cloudLastSuccess && { lastSuccess: s.cloudLastSuccess }),
     ...(s.cloudError && { error: s.cloudError }),
     pending: await db.count("outbox"),
-    legacy: {
-      closed: !!s.legacyClosed,
-      ...(s.legacyLastImport && { lastImport: s.legacyLastImport }),
-      ...(s.legacyVersions !== undefined && { versions: s.legacyVersions }),
-    },
   };
 }
 
@@ -126,13 +111,6 @@ export async function signOut(db: Database): Promise<CloudStatus> {
   if (s.cloudConfig && s.cloudSession)
     await cloud.signOut(s.cloudConfig, s.cloudSession).catch(() => {});
   await browser.storage.local.remove(["cloudSession", "cloudError"]);
-  return status(db);
-}
-
-export async function closeLegacyTransition(
-  db: Database,
-): Promise<CloudStatus> {
-  await browser.storage.local.set({ legacyClosed: true });
   return status(db);
 }
 
@@ -185,21 +163,6 @@ async function run(db: Database): Promise<CloudStatus> {
       const before = await getCursor(db);
       await applyRemoteOperations(db, page);
       if (page.length < 500 || (await getCursor(db)) === before) break;
-    }
-
-    // 3. Historique 0.3.6 : importé tant que la transition est ouverte.
-    if (
-      !s.legacyClosed &&
-      Date.now() - (s.legacyLastImport ?? 0) > LEGACY_IMPORT_EVERY
-    ) {
-      const history = await cloud.readLegacyHistory(s.cloudConfig, session);
-      const result = history
-        ? await importLegacyHistory(db, history)
-        : { versions: 0 };
-      await browser.storage.local.set({
-        legacyLastImport: Date.now(),
-        legacyVersions: result.versions,
-      });
     }
 
     await browser.storage.local.set({ cloudLastSuccess: Date.now() });

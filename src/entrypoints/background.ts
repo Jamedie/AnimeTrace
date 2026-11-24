@@ -4,7 +4,6 @@
 import { browser } from "wxt/browser";
 import type { EpisodeObservation } from "../connectors/types";
 import type { ProgressReport } from "../core/history/playback";
-import { runLegacyMigration } from "../core/backup/migration";
 import {
   listDomains,
   openDatabase,
@@ -12,7 +11,6 @@ import {
   recordDomainActivated,
   type Database,
 } from "../adapters/storage/database";
-import { createMigrationPorts } from "../adapters/storage/migration-ports";
 import {
   recordOpened,
   recordProgress,
@@ -51,16 +49,14 @@ import * as malSync from "../adapters/mal/sync";
 import { hasMalAccess } from "../adapters/mal/client";
 import {
   answerMal,
-  readCatalog,
   saveLink,
 } from "../adapters/storage/catalog-store";
 import * as cloudSync from "../adapters/supabase/sync";
-import { libraryView } from "../core/history/library-view";
+import { importLocalLibraryChoices, saveLibraryChoices } from "../adapters/storage/sync-store";
+import { readLibraryView } from "../adapters/storage/library-query";
 import { buildBackupFile, parseBackupFile } from "../core/backup/backup-file";
-import { buildLegacyExportFile } from "../core/backup/legacy-export";
 import {
   importBackup,
-  latestLegacyBackup,
   readBackupData,
 } from "../adapters/storage/backup-store";
 
@@ -133,7 +129,7 @@ export async function popupState(
     : [];
   const history = indexHistory(lib);
   const cards = new Map(
-    libraryView(lib, await readCatalog(db), Date.now(), history).animes.map(
+    (await readLibraryView(db, lib, history)).animes.map(
       (a) => [a.id, a],
     ),
   );
@@ -149,15 +145,18 @@ export async function popupState(
   return {
     catalogEnabled: await hasMalAccess(),
     current: current ? { ...current, ...cover(current.animeId) } : null,
-    recent: recentAnimes(lib, 3, history).map((r) => {
-      const resume = cards.get(r.animeId)?.resume;
-      return {
+    recent: recentAnimes(lib, lib.animes.length, history).flatMap((r) => {
+      const anime = cards.get(r.animeId);
+      if (!anime) return [];
+      const resume = anime.resume;
+      return [{
         ...r,
         ...cover(r.animeId),
+        watchedCount: anime.watchedCount,
         nextNumber: resume?.number ?? r.lastNumber,
         nextUrl: resume?.knownUrl ?? null,
-      };
-    }),
+      }];
+    }).slice(0, 3),
     blockedPlayers,
     suggestedPlayers,
     framesVisible: await browser.permissions.contains({
@@ -168,7 +167,7 @@ export async function popupState(
 
 /** Bibliothèque complète, avec l'adresse de reprise de chaque anime. */
 async function libraryState(db: Database): Promise<LibraryState> {
-  const view = libraryView(await readLibrary(db), await readCatalog(db));
+  const view = await readLibraryView(db);
   const resumeUrls: Record<string, string | null> = {};
   for (const a of view.animes)
     resumeUrls[a.id] = a.resume?.knownUrl ?? null;
@@ -187,14 +186,10 @@ async function getDeviceId(): Promise<string> {
 
 async function start() {
   const db = await openDatabase();
-  const record = await runLegacyMigration(createMigrationPorts(db));
-  console.info(
-    "AnimeTrace : migration 0.3.6 →",
-    record.status,
-    record.report?.counts ?? record.error ?? "",
-  );
   await syncContentScripts();
-  return { db, deviceId: await getDeviceId() };
+  const deviceId = await getDeviceId();
+  await importLocalLibraryChoices(db, await browser.storage.local.get(null), deviceId);
+  return { db, deviceId };
 }
 
 let scheduleSync: () => void = () => {};
@@ -263,10 +258,7 @@ export default defineBackground(() => {
           );
         return true;
       }
-      if (
-        message.type.startsWith("cloud.") ||
-        message.type === "legacy.close"
-      ) {
+      if (message.type.startsWith("cloud.")) {
         // Le cloud ne passe pas par la file : une synchronisation ne bloque pas l'enregistrement des lectures.
         const m = message as CloudRequest;
         void ready
@@ -279,8 +271,6 @@ export default defineBackground(() => {
             if (m.type === "cloud.signIn")
               return cloudSync.signIn(db, m.email, m.password);
             if (m.type === "cloud.signOut") return cloudSync.signOut(db);
-            if (m.type === "legacy.close")
-              return cloudSync.closeLegacyTransition(db);
             return cloudSync.syncNow(db);
           })
           .then(
@@ -301,11 +291,6 @@ export default defineBackground(() => {
           if (m.type === "backup.export") {
             const d = await readBackupData(db);
             return buildBackupFile(d.library, d.links, Date.now());
-          }
-          if (m.type === "backup.exportLegacy") {
-            const b = await latestLegacyBackup(db);
-            if (!b) throw new Error("Aucune copie 0.3.6 sur cet ordinateur.");
-            return buildLegacyExportFile(b.history, b.at);
           }
           const report = await importBackup(
             db,
@@ -330,6 +315,8 @@ export default defineBackground(() => {
       if (
         message.type === "popup.state" ||
         message.type === "library.state" ||
+        message.type === "library.hide" ||
+        message.type === "library.previous" ||
         message.type === "domains.list" ||
         message.type === "domains.activated"
       ) {
@@ -338,6 +325,33 @@ export default defineBackground(() => {
           if (message.type === "popup.state")
             return popupState(db, message.tabId);
           if (message.type === "library.state") return libraryState(db);
+          if (message.type === "library.hide") {
+            const anime = (await libraryState(db)).animes.find((a) => a.id === message.animeId);
+            if (!anime || anime.watchedCount !== 0) return { ok: false, error: "Cet anime ne peut plus être retiré." };
+            await saveLibraryChoices(db, [{
+              type: "library.hidden", payload: { animeId: anime.id, through: anime.lastActivity },
+            }], deviceId);
+            scheduleSync();
+            void browser.storage.local.set({ libraryUpdated: crypto.randomUUID() }).catch(() => {});
+            return { ok: true };
+          }
+          if (message.type === "library.previous") {
+            const season = (await libraryState(db)).animes
+              .flatMap((a) => a.seasons).find((s) => s.id === message.seasonId);
+            if (season?.previousQuestion?.to !== message.through)
+              return { ok: false, error: "La progression a changé. Recharge la bibliothèque." };
+            await saveLibraryChoices(db, [{
+              type: "library.previous",
+              payload: {
+                seasonId: season.id,
+                reviewed: message.through,
+                confirmed: message.watched ? message.through : 0,
+              },
+            }], deviceId);
+            scheduleSync();
+            void browser.storage.local.set({ libraryUpdated: crypto.randomUUID() }).catch(() => {});
+            return { ok: true };
+          }
           if (message.type === "domains.list") return listDomains(db);
           for (const d of message.hosts) {
             const domain = { ...d, activatedAt: Date.now() };

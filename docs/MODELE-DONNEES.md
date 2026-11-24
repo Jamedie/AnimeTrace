@@ -1,4 +1,4 @@
-# AnimeTrace — Modèle de données et migration
+# AnimeTrace — Modèle de données
 
 Document de conception du 17 novembre 2026. Il définit la cible de la refonte ; aucune migration ni modification du cloud n’est exécutée. Le stockage physique et les migrations SQL seront définis lors de l’implémentation.
 
@@ -70,34 +70,11 @@ Les 11 fiches et leurs affiches ont été vérifiées par l’API. Les rattachem
 | witch-hat-atelier                                                     | 51553     | 1               |
 | youjo-senki-2                                                         | 49233     | 2               |
 
-Ces correspondances ne doivent pas déclencher d’écriture MAL lors de la migration. Les saisons absentes de la sauvegarde ne sont ni ajoutées comme vues ni nécessaires pour afficher la saison suivie.
+Les saisons absentes de la sauvegarde ne sont ni ajoutées comme vues ni nécessaires pour afficher la saison suivie.
 
-## 5. Migration de la version actuelle
+## 5. Historique des versions
 
-La sauvegarde exportVersion 1 issue de l’extension 0.3.6 contient 35 entrées et 11 groupes source. Les 35 entrées sont en VOSTFR. La version de l’export n’est pas la version de l’extension.
-
-1. Conserver une copie intacte de la sauvegarde et calculer son empreinte. Ne jamais modifier le fichier importé.
-2. Valider les entrées. Une entrée invalide est conservée dans un rapport de rejet, pas supprimée silencieusement.
-3. Produire un stockage V2 séparé, avec schemaVersion, migrationVersion et journal de correspondance entre clés historiques et identifiants internes.
-4. Générer les identifiants initiaux de façon déterministe à partir d’un espace de noms de migration et des anciennes clés qualifiées par fournisseur. Deux machines migrant les mêmes entrées obtiennent les mêmes identifiants. Un rattachement catalogue ultérieur ne les change pas.
-5. Conserver exactement les champs de lecture présents : watched, position, duration, updatedAt et openedAt. Garder aussi titre brut, URL, langue et ancienne affiche avec leur provenance. Un champ absent reste absent ; openedAt n’est pas présenté comme date de premier visionnage.
-6. Créer les saisons provisoires et rattacher les correspondances proposées séparément. Aucun accès MAL n’est indispensable pour convertir la sauvegarde.
-7. Vérifier les 35 correspondances, les références entre entités et l’égalité des progressions/statuts. Rejouer la migration doit être sans effet supplémentaire.
-8. Basculer le pointeur du stockage actif seulement après validation complète. Garder le stockage V1 et un rapport de migration pour récupération.
-
-Le résultat attendu pour cet échantillon est 11 animes, 11 regroupements de saison, 35 épisodes et 35 versions de lecture. Il s’agit d’un attendu de conception, pas du résultat d’une migration exécutée.
-
-### Passage du cloud V1 au cloud V2
-
-Le RPC actuel sync_history fusionne un objet JSON indexé par les anciennes clés. Il ne faut pas lui envoyer le nouveau schéma.
-
-- Prévoir un espace de stockage et un protocole V2 séparés, avec isolation par compte.
-- Avant bascule, intégrer les dernières lectures locales et cloud V1 sous verrou de migration par compte.
-- Définir une période de transition : import V1 vers V2 idempotent avec correspondances stables. Les anciens clients ne doivent pas recréer des doublons ni écraser des corrections V2.
-- Ne pas activer les corrections/suppressions incompatibles tant que l’import d’anciens clients reste ouvert ; clôturer explicitement cette transition une fois les appareils migrés.
-- Un retour à l’ancienne extension n’est pas une restauration automatique des nouvelles lectures V2 : exporter V2 et conserver ses données avant tout retour arrière.
-
-Pour les nouvelles lectures concurrentes, chaque opération aura un identifiant unique, un appareil d’origine et une révision serveur. Les réessais sont idempotents. Des progressions concurrentes restent conservées ; les règles exactes de choix de la dernière lecture seront fixées et testées dans le protocole V2, sans supposer les horloges clientes parfaitement synchronisées.
+La migration depuis la 0.3.6 a été retirée. Les lectures intégrées à la V1 conservent leurs identifiants.
 
 ## 6. Synchronisation facultative vers MAL
 
@@ -123,6 +100,4 @@ Préserver la note MAL en n’écrivant jamais ce champ. Les statuts MAL En paus
 
 ## 8. Vérifications requises avant livraison
 
-Migration exacte des 35 entrées, réimport sans doublon, migration identique sur deux appareils, changement de domaine sans duplication, coexistence VF/VOSTFR, saison inconnue, épisode spécial, saison divisée en plusieurs fiches MAL, panne catalogue, total inconnu, lectures concurrentes, transition cloud et conflit avec une modification manuelle MAL.
-
-La prochaine réalisation est un convertisseur hors ligne avec rapport et tests de conservation sur la sauvegarde fournie. L’intégration à l’extension et la bascule cloud viennent ensuite.
+Réimport de sauvegarde V1 sans doublon, changement de domaine sans duplication, coexistence VF/VOSTFR, saison inconnue, épisode spécial, saison divisée en plusieurs fiches MAL, panne catalogue, total inconnu, lectures concurrentes, synchronisation cloud et conflit avec une modification manuelle MAL.

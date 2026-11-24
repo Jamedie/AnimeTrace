@@ -273,3 +273,39 @@ describe("bibliothèque", () => {
     });
   });
 });
+
+it("demande les épisodes précédents même sans question de synchronisation MAL", () => {
+  const history = structuredClone(lib);
+  history.episodes[0]!.number = 12;
+  const catalog = {
+    links: [{ seasonId: "sa", status: "confirmed", malId: 1, at: 1 }],
+    entries: [{ id: 1, title: "Clevatess", num_episodes: 12, fetchedAt: 1 }],
+    malSync: [{ malId: 1, lastSent: 12, updatedAt: 1 }],
+  } satisfies Parameters<typeof libraryView>[1];
+  const card = libraryView(history, catalog).animes.find((a) => a.id === "a");
+  expect(card?.seasons[0]).toMatchObject({ previousQuestion: { from: 1, to: 11 } });
+
+  const afterAnswer = (confirmed: number) =>
+    libraryView(history, catalog, 200, undefined, {
+      "library.previous:sa": { reviewed: 11, confirmed },
+    }).animes.find((a) => a.id === "a")!;
+  expect(afterAnswer(11)).toMatchObject({ watchedCount: 12, status: "completed" });
+  expect(afterAnswer(11).lastPlayback?.number).toBe(10);
+  expect(afterAnswer(0).watchedCount).toBe(1);
+  expect(afterAnswer(0).seasons[0]?.previousQuestion).toBeUndefined();
+});
+
+it("retire un anime sans épisode vu jusqu’à une nouvelle activité", () => {
+  const history = structuredClone(lib);
+  const version = history.versions[3]!;
+  version.watched = false;
+  version.openedAt = 50;
+  const cards = () => libraryView(history, undefined, 200, undefined, {
+    "library.hidden:a": 200,
+    "library.hidden:b": 50,
+  }).animes.map((a) => a.id);
+
+  expect(cards()).toEqual(["a"]);
+  version.openedAt = 100;
+  expect(cards()).toEqual(["a", "b"]);
+});

@@ -69,6 +69,8 @@ export interface SeasonView {
   episodes: EpisodeView[];
   watchedCount: number;
   total: number | null;
+  previousQuestion?: { from: number; to: number };
+  confirmedThrough?: number;
 }
 
 export interface AnimeCardView {
@@ -102,6 +104,7 @@ export function libraryView(
   catalog: CatalogInput = { links: [], entries: [], malSync: [] },
   now = Date.now(),
   history = indexHistory(lib),
+  preferences: Record<string, unknown> = {},
 ): LibraryView {
   const linkOf = new Map(catalog.links.map((l) => [l.seasonId, l]));
   const entryOf = new Map(catalog.entries.map((e) => [e.id, e]));
@@ -202,7 +205,18 @@ export function libraryView(
             };
           })
           .sort((a, b) => b.number - a.number);
-        const watchedCount = episodes.filter((e) => e.watched).length;
+        const answer = preferences[`library.previous:${season.id}`] as
+          | { reviewed: number; confirmed: number }
+          | undefined;
+        const through = answer?.reviewed ?? 0;
+        const confirmedThrough = answer?.confirmed ?? 0;
+        const seen = new Set(episodes.filter((e) => e.watched).map((e) => e.number));
+        const highest = episodes.find((e) => e.watched)?.number ?? 0;
+        let from = confirmedThrough + 1;
+        let to = highest - 1;
+        while (from <= to && seen.has(from)) from++;
+        while (to >= from && seen.has(to)) to--;
+        const watchedCount = confirmedThrough + [...seen].filter((n) => n > confirmedThrough).length;
         const link = linkOf.get(season.id);
         const total =
           link?.status === "confirmed" && link.malId !== undefined
@@ -214,17 +228,22 @@ export function libraryView(
           episodes,
           watchedCount,
           total,
+          ...(to > through && from <= to && { previousQuestion: { from, to } }),
+          ...(confirmedThrough > 0 && { confirmedThrough }),
         };
       });
 
-    if (!hasPlayback && lastOpenedAt > 0) {
+    const watchedCount = seasons.reduce((n, s) => n + s.watchedCount, 0);
+    if (!hasPlayback && watchedCount === 0 && lastOpenedAt > 0) {
       const expiresAt = lastOpenedAt + UNPLAYED_RETENTION_MS;
       if (expiresAt <= now) continue;
       nextExpirationAt = Math.min(nextExpirationAt ?? expiresAt, expiresAt);
     }
 
-    const watchedCount = seasons.reduce((n, s) => n + s.watchedCount, 0);
     const lastActivity = Math.max(playback?.at ?? 0, lastOpenedAt);
+    const hiddenAt = preferences[`library.hidden:${anime.id}`];
+    if (watchedCount === 0 && typeof hiddenAt === "number" && lastActivity <= hiddenAt)
+      continue;
     const resume = playback ? resumeFrom(playback) : null;
     const lastPlayback = playback && {
       number: playback.episode.number,

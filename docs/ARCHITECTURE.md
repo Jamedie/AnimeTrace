@@ -37,7 +37,7 @@ Le service worker peut être arrêté à tout moment par le navigateur : aucun �
 | Domaines              | Liste des domaines activés par site logique, demande et vérification des autorisations du navigateur, enregistrement dynamique des scripts. |
 | Synchronisation cloud | File d’envoi, fusion des données entre ordinateurs. Détail au chapitre stockage.                                                            |
 | Synchronisation MAL   | File des mises à jour, règles de progression validées, conflits par anime. Détail au chapitre MAL.                                          |
-| Sauvegarde            | Export, import, migration des données 0.3.6.                                                                                                |
+| Sauvegarde            | Export et import des sauvegardes AnimeTrace V1.                                                                                                |
 
 ## 4. Contrat des connecteurs
 
@@ -118,8 +118,6 @@ Ce qui ne passe pas par le cloud :
 - La connexion MAL reste propre à chaque ordinateur ; ses jetons ne sont pas stockés sur Supabase. Le compteur MAL ne faisant qu’augmenter, deux ordinateurs connectés n’envoient pas de mise à jour contradictoire.
 - Les autorisations Brave de domaine, à accepter sur chaque ordinateur.
 
-Transition depuis la 0.3.6 : la table actuelle `anime_histories` reste intacte et lisible pendant la migration ; les nouvelles tables sont séparées. Le détail figure dans [MODELE-DONNEES.md](MODELE-DONNEES.md).
-
 ## 10. Connexion et synchronisation MAL
 
 **Validé.** Les règles fonctionnelles sont celles validées dans [FONCTIONNALITES.md](FONCTIONNALITES.md) ; ce chapitre décrit leur mise en œuvre.
@@ -156,26 +154,7 @@ Transition depuis la 0.3.6 : la table actuelle `anime_histories` reste intacte e
 - Si le compteur MAL est inférieur à une valeur qu’AnimeTrace a déjà envoyée, l’utilisateur l’a probablement baissé volontairement : l’anime passe en « conflit », sans envoi automatique, jusqu’au choix de l’utilisateur dans la bibliothèque.
 - Un conflit ne bloque ni l’enregistrement local, ni les autres animes.
 
-## 11. Migration depuis la 0.3.6
-
-**Validé.** Les règles de conversion figurent dans [MODELE-DONNEES.md](MODELE-DONNEES.md), section 5. Ce chapitre décrit leur exécution.
-
-- La V1 porte l’identifiant de la fiche Chrome Web Store (oececnmlgocopkohibfpdbkhmnaofooj), fixé par la clé publique dans le manifeste, y compris en installation locale. La 0.3.6 installée en local a un autre identifiant : ses données ne sont pas lisibles directement. Elles arrivent par l’import du cloud 0.3.6 (ci-dessous) ou par l’import d’un fichier exporté. La lecture sur place reste utilisée si une version portant le même identifiant existait déjà.
-- Au premier démarrage :
-  1. une copie intacte de l’historique 0.3.6 est conservée dans la nouvelle base ; l’écran de migration propose un bouton « Exporter » pour l’enregistrer en fichier (pas de permission de téléchargement automatique) ;
-  2. l’historique est converti dans la nouvelle base, sans modifier les anciennes données ;
-  3. le résultat est vérifié (nombre d’épisodes, statuts vus, positions) ;
-  4. la nouvelle base devient active seulement si tout concorde ; sinon l’extension reste sur les anciennes données et affiche le rapport.
-- Le convertisseur est un module indépendant, testé d’abord hors de l’extension sur la sauvegarde fournie (35 entrées).
-- Aucune écriture MAL pendant la migration ; les associations proposées restent à confirmer ou s’appliquent comme prévu, puis la synchronisation MAL démarre normalement.
-
-### Cloud et ordinateurs non mis à jour
-
-- La V1 lit l’historique cloud 0.3.6 (`anime_histories`) et l’importe dans le nouveau journal, sans jamais y écrire.
-- Tant qu’un ordinateur reste en 0.3.6, la V1 réimporte régulièrement cet ancien historique ; grâce aux identifiants déterministes, rien n’est dupliqué.
-- Quand tous les ordinateurs sont en V1, l’utilisateur clôt la transition dans les réglages ; l’ancienne table est conservée en lecture seule pour récupération.
-
-## 12. Structure des fichiers
+## 11. Structure des fichiers
 
 **Validé.** Construction avec **WXT**, un outil basé sur Vite dédié aux extensions : chaque fichier de `entrypoints/` devient automatiquement une partie de l’extension, et le `manifest.json` est généré.
 
@@ -202,7 +181,7 @@ AnimeTrace/
 │   │   ├── domains/           Domaines activés
 │   │   ├── sync/              Journal d’opérations et fusion
 │   │   ├── mal-sync/          File et règles MAL
-│   │   └── backup/            Export, import, migration 0.3.6
+│   │   └── backup/            Export et import de sauvegarde
 │   ├── connectors/            Un dossier par site
 │   │   ├── types.ts           Contrat commun des connecteurs
 │   │   ├── index.ts           Liste des connecteurs livrés
@@ -217,7 +196,7 @@ AnimeTrace/
 │   ├── shared/                Types du modèle de données, messages internes
 │   └── ui/                    Composants communs aux pages (issus de la refonte UI/UX)
 ├── cloud/                     Scripts SQL Supabase (nouvelles tables)
-└── tests/                     Tests transverses (migration de la sauvegarde 0.3.6)
+└── tests/                     Tests transverses
 ```
 
 Règles de dépendance :
@@ -229,6 +208,6 @@ Règles de dépendance :
 
 Différence avec un site : il n’y a pas de serveur. Le dossier construit (`.output/chrome-mv3/`) se charge dans Brave via « Charger l’extension non empaquetée » en mode développeur ; WXT le recharge automatiquement pendant le développement. Pour la publication, ce dossier est compressé en ZIP.
 
-## 13. Chapitres à rédiger
+## 12. Chapitres à rédiger
 
 - Aucun chapitre en attente ; seule l’interface reste à aligner avec la refonte UI/UX (dossiers `entrypoints/` et `ui/`).

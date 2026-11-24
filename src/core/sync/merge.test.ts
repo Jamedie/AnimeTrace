@@ -54,7 +54,7 @@ describe("fusion entre ordinateurs", () => {
     });
   });
 
-  it("import 0.3.6 : vu cumulatif, progression la plus récente par date", () => {
+  it("import de sauvegarde : vu cumulatif, progression la plus récente par date", () => {
     const local = {
       ...base,
       watched: true,

@@ -1,4 +1,4 @@
-// Réglages : compte cloud, transition depuis la 0.3.6, domaines activés.
+// Réglages : compte cloud, sauvegardes, domaines activés.
 // MAL, sauvegarde (export / import).
 
 import { browser } from "wxt/browser";
@@ -15,7 +15,7 @@ import type {
 } from "../../shared/messages";
 import type { MalStatus } from "../../adapters/mal/sync";
 import { MAL_ORIGINS } from "../../adapters/mal/client";
-import type { ExportFile } from "../../core/backup/legacy-export";
+import type { ExportFile } from "../../core/backup/backup-file";
 import type { ImportReport } from "../../adapters/storage/backup-store";
 
 let cloud: CloudStatus | null = null;
@@ -194,29 +194,6 @@ function cloudBox(s: CloudStatus): HTMLElement {
   return box;
 }
 
-function transitionBanner(s: CloudStatus): HTMLElement | null {
-  if (!s.signedIn || s.legacy.closed) return null;
-  const close = button("Clore la transition", "ghost", () => {
-    if (
-      confirm(
-        "Clore la transition ? L’historique 0.3.6 du cloud ne sera plus importé. Fais-le une fois tous tes ordinateurs passés en V1.",
-      )
-    )
-      void ask({ type: "legacy.close" });
-  });
-  return h(
-    "div",
-    { class: "banner" },
-    h(
-      "span",
-      {},
-      h("b", {}, "Transition depuis la 0.3.6 en cours. "),
-      `L’ancien historique du cloud est importé régulièrement, en lecture seule${s.legacy.versions !== undefined ? ` (${s.legacy.versions} épisodes lus la dernière fois)` : ""}. Clos-la quand tous tes ordinateurs sont en V1.`,
-    ),
-    close,
-  );
-}
-
 function domainsBox(): HTMLElement {
   const sites = domains.filter((d) => d.kind === "site");
   const players = domains.filter((d) => d.kind === "player");
@@ -303,7 +280,6 @@ function render() {
         h(
           "div",
           { class: "sections" },
-          transitionBanner(cloud) ?? "",
           cloudBox(cloud),
           malBox(),
           backupBox(),
@@ -350,6 +326,23 @@ async function askMalValue(request: MalRequest): Promise<MalStatus> {
     throw new Error(reply?.error ?? "Le service worker ne répond pas.");
   return reply.value;
 }
+
+async function refreshMalCounts() {
+  if (document.hidden || busy || !malStatus) return;
+  const previous = malStatus;
+  const next = await askMalValue({ type: "mal.status" }).catch(() => null);
+  if (!next || malStatus !== previous || busy) return;
+  if (next.pendingLinks === previous.pendingLinks &&
+      next.questions === previous.questions && next.conflicts === previous.conflicts) return;
+  malStatus = next;
+  render();
+}
+
+document.addEventListener("visibilitychange", () => void refreshMalCounts());
+browser.storage.onChanged.addListener((changes, area) => {
+  if (area === "local" && (changes.cloudLastSuccess || changes.libraryUpdated))
+    void refreshMalCounts();
+});
 
 async function malAction(request: MalRequest) {
   busy = true;
@@ -564,7 +557,7 @@ function importSummary(r: ImportReport): string {
   ];
   if (r.links)
     parts.push(`${r.links} association${r.links > 1 ? "s" : ""} MAL`);
-  return `Import ${r.kind === "legacy" ? "de la sauvegarde 0.3.6" : "terminé"} : ${parts.join(" · ")}.${cloud?.signedIn && (r.added || r.updated) ? " Les nouveautés partent vers tes autres ordinateurs." : ""}`;
+  return `Import terminé : ${parts.join(" · ")}.${cloud?.signedIn && (r.added || r.updated) ? " Les nouveautés partent vers tes autres ordinateurs." : ""}`;
 }
 
 function backupBox(): HTMLElement {
@@ -625,20 +618,6 @@ function backupBox(): HTMLElement {
         "ghost",
         busy ? undefined : () => input.click(),
       ),
-      button(
-        "Exporter la copie 0.3.6",
-        "text",
-        busy
-          ? undefined
-          : () =>
-              void backupAction(async () => {
-                const file = await askBackup<ExportFile>({
-                  type: "backup.exportLegacy",
-                });
-                download(file);
-                return `Copie intacte de la 0.3.6 enregistrée (${file.filename}).`;
-              }),
-      ),
       input,
     ),
     h(
@@ -649,7 +628,6 @@ function backupBox(): HTMLElement {
         {},
         "L’import n’efface rien : un épisode vu reste vu, la progression la plus récente est gardée.",
       ),
-      h("li", {}, "Les fichiers exportés par la 0.3.6 sont acceptés."),
       h("li", {}, "Le fichier ne contient ni mot de passe ni session."),
     ),
   );

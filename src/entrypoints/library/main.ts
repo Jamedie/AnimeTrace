@@ -22,7 +22,7 @@ import {
 } from "../../core/history/library-view";
 import type { MalCandidate } from "../../core/catalog/match";
 import type { MalAnswer } from "../../core/sync/operations";
-import type { LibraryState, MalRequest, Reply } from "../../shared/messages";
+import type { LibraryState, MalRequest, PageRequest, Reply } from "../../shared/messages";
 
 type Tab = "in-progress" | "completed" | "to-check" | "all";
 type Sort = "airing" | "recent";
@@ -54,7 +54,7 @@ function normalize(s: string): string {
 /** Un point à vérifier : fiche à choisir, question sur les épisodes précédents, conflit MAL. */
 function toCheck(a: AnimeCardView): "pending" | "question" | "conflict" | null {
   if (a.catalog.conflict) return "conflict";
-  if (a.catalog.question) return "question";
+  if (a.catalog.question || a.seasons[0]?.previousQuestion) return "question";
   if (a.catalog.status === "pending") return "pending";
   return null;
 }
@@ -171,8 +171,8 @@ function checkCards(s: LibraryState): HTMLElement | null {
   const describe = (a: AnimeCardView, kind: string) => {
     if (kind === "conflict")
       return `MAL indique ${a.catalog.conflict!.remote}, AnimeTrace ${a.catalog.conflict!.lastSent}. Attend ton choix.`;
-    if (kind === "question")
-      return `Les épisodes ${a.catalog.question!.from} à ${a.catalog.question!.to} sont-ils déjà vus ?`;
+    const question = a.catalog.question ?? a.seasons[0]?.previousQuestion;
+    if (kind === "question" && question) return previousQuestionLabel(question);
     return a.catalog.candidates.length
       ? `${a.catalog.candidates.length} fiche${a.catalog.candidates.length > 1 ? "s" : ""} possible${a.catalog.candidates.length > 1 ? "s" : ""}.`
       : "Aucune fiche trouvée automatiquement.";
@@ -481,17 +481,60 @@ function conflictBlock(a: AnimeCardView): HTMLElement | null {
   );
 }
 
+function previousQuestionLabel(q: { from: number; to: number }): string {
+  return q.from === q.to
+    ? `As-tu déjà vu l’épisode ${q.from} ?`
+    : `As-tu déjà vu les épisodes ${q.from} à ${q.to} ?`;
+}
+
+async function updateLibrary(request: PageRequest, malId?: number) {
+  try {
+    const result = await browser.runtime.sendMessage(request);
+    if (!result?.ok) throw new Error(result?.error ?? "La bibliothèque est indisponible.");
+    if (request.type === "library.hide") closePanel();
+    if (request.type === "library.previous" && malId !== undefined) {
+      await mal({ type: "mal.answer", malId, answer: { previousAnswer: request.watched } });
+    }
+    await load();
+  } catch (error) {
+    alert(String(error));
+  }
+}
+
 function panel(a: AnimeCardView, s: LibraryState): HTMLElement {
   const season = a.seasons[0];
+  const q = season?.previousQuestion;
+  const malQuestion = a.catalog.question;
+  const sameQuestion = q && malQuestion?.from === q.from && malQuestion.to === q.to;
   const list = h("div", { class: "eps" });
   const showChooser = ui.choosing || a.catalog.status === "pending";
   if (showChooser) list.append(chooser(a));
   list.append(
-    ...[conflictBlock(a), questionBlock(a)].filter(
+    ...[conflictBlock(a), sameQuestion ? null : questionBlock(a)].filter(
       (x): x is HTMLElement => !!x,
     ),
   );
   if (season) {
+    if (q) {
+      const respond = (watched: boolean) => void updateLibrary({
+        type: "library.previous", seasonId: season.id, through: q.to, watched,
+      }, sameQuestion ? a.catalog.malId : undefined);
+      list.append(h("section", { class: "ask-box" },
+        h("h3", {}, previousQuestionLabel(q)),
+        h("p", { class: "fine" }, sameQuestion
+          ? "Ta réponse met à jour la bibliothèque et sert à synchroniser ta liste MAL."
+          : "Ta réponse met à jour le compteur de cette saison."),
+        h("div", { class: "btns" },
+          button("Oui, déjà vus", "primary", () => respond(true)),
+          button("Non", "ghost", () => respond(false)),
+        ),
+      ));
+    }
+    if (season.confirmedThrough) {
+      list.append(h("p", { class: "fine" },
+        `Épisodes confirmés vus jusqu’à l’épisode ${season.confirmedThrough}`,
+      ));
+    }
     for (const g of groupEpisodes(season.episodes)) {
       if (g.kind === "episode") {
         list.append(episodeRow(g.episode));
@@ -598,6 +641,11 @@ function panel(a: AnimeCardView, s: LibraryState): HTMLElement {
               },
               "Voir sur MAL ↗",
             )
+          : null,
+        a.watchedCount === 0
+          ? button("Retirer de la bibliothèque", "ghost", () => {
+              void updateLibrary({ type: "library.hide", animeId: a.id });
+            })
           : null,
         domain
           ? h(
@@ -830,6 +878,10 @@ document.addEventListener("keydown", (e) => {
     e.preventDefault();
     document.querySelector<HTMLInputElement>(".search input")?.focus();
   }
+});
+browser.storage.onChanged.addListener((changes, area) => {
+  if (area === "local" && (changes.cloudLastSuccess || changes.libraryUpdated) && !document.hidden && !ui.choosing)
+    void load().catch(() => {});
 });
 // Revenir sur l'onglet après avoir regardé un épisode : la bibliothèque se met à jour.
 document.addEventListener("visibilitychange", () => {

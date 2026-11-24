@@ -15,7 +15,12 @@ export interface MalAnswer {
   resend?: { remote: number };
 }
 
+export type LibraryChoice =
+  | { type: "library.hidden"; payload: { animeId: string; through: number } }
+  | { type: "library.previous"; payload: { seasonId: string; reviewed: number; confirmed: number } };
+
 export type Operation =
+  | (LibraryChoice & { id: string; deviceId: string; createdAt: number })
   | {
       id: string;
       deviceId: string;

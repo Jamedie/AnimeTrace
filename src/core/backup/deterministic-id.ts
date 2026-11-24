@@ -1,7 +1,7 @@
 // Identifiants déterministes (UUID v5) : deux ordinateurs qui migrent les mêmes
 // entrées obtiennent les mêmes identifiants (MODELE-DONNEES.md §5, étape 4).
 
-/** Espace de noms fixe de la migration 0.3.6. Ne jamais le modifier. */
+/** Espace de noms fixe des identifiants AnimeTrace. Ne jamais le modifier. */
 export const LEGACY_MIGRATION_NAMESPACE =
   "6f1c2a3e-7b4d-5e8f-9a0b-1c2d3e4f5a6b";
 

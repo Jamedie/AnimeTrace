@@ -14,6 +14,7 @@ import {
   saveLink,
   seasonsToResolve,
 } from "../storage/catalog-store";
+import { readLibraryView } from "../storage/library-query";
 import * as mal from "./client";
 
 export interface MalStatus {
@@ -47,16 +48,15 @@ async function stored(): Promise<Stored> {
 }
 
 export async function status(db: Database): Promise<MalStatus> {
-  const s = await stored();
-  const { links, malSync } = await readCatalog(db);
+  const [s, { animes }] = await Promise.all([stored(), readLibraryView(db)]);
   return {
     enabled: await mal.hasMalAccess(),
     connected: !!s.malSession,
     ...(s.malSession?.userName && { userName: s.malSession.userName }),
     needsReconnect: !!s.malNeedsReconnect,
-    pendingLinks: links.filter((l) => l.status === "pending").length,
-    questions: malSync.filter((m) => m.question).length,
-    conflicts: malSync.filter((m) => m.conflict).length,
+    pendingLinks: animes.filter((a) => a.catalog.status === "pending").length,
+    questions: animes.filter((a) => a.catalog.question).length,
+    conflicts: animes.filter((a) => a.catalog.conflict).length,
     ...(s.malLastSent && { lastSent: s.malLastSent }),
     ...(s.malError && { error: s.malError }),
   };

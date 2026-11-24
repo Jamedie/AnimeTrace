@@ -34,7 +34,7 @@ export function mergeRemoteProgress(
 }
 
 /**
- * Fusionne une version importée sans ordre serveur (historique cloud 0.3.6, sauvegarde) :
+ * Fusionne une version importée sans ordre serveur (sauvegarde) :
  * vu cumulatif, progression la plus récente selon sa date, première ouverture la plus récente.
  */
 export function mergeImportedVersion(

@@ -229,33 +229,8 @@ describe("sauvegarde V1", () => {
     expect(await pendingOperations(target)).toEqual([]);
   });
 
-  it("accepte un export 0.3.6 et refuse un fichier inconnu", async () => {
-    const legacy = JSON.stringify({
-      version: 1,
-      history: {
-        "dandadan:1:vostfr": {
-          anime: "dandadan",
-          title: "Dandadan",
-          number: 1,
-          language: "VOSTFR",
-          watched: true,
-          url: "https://voiranime.cx/anime/dandadan/dandadan-01-vostfr/",
-        },
-      },
-    });
-    const parsed = await parseBackupFile("\uFEFF" + legacy);
-    expect(parsed.kind).toBe("legacy");
-    expect(parsed.library.versions).toHaveLength(1);
-    await expect(parseBackupFile('{"foo":1}')).rejects.toThrow(/non reconnu/);
-    await expect(parseBackupFile("pas du json")).rejects.toThrow(/JSON/);
-    await expect(
-      parseBackupFile(
-        JSON.stringify({
-          format: "animetrace-backup",
-          version: 2,
-          library: {},
-        }),
-      ),
-    ).rejects.toThrow(/mets l’extension à jour/);
+  it("refuse les anciens exports et les fichiers inconnus", async () => {
+    await expect(parseBackupFile(JSON.stringify({ version: 1, history: {} }))).rejects.toThrow();
+    await expect(parseBackupFile("{}")).rejects.toThrow();
   });
 });

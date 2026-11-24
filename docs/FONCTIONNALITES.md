@@ -29,7 +29,7 @@ La V1 rassemble les fonctionnalités prévues pour la refonte, y compris la sync
 - Nouvelle bibliothèque organisée par anime, saison, épisode et version de lecture.
 - Catalogue et affiches MyAnimeList, avec gestion des associations incertaines.
 - Synchronisation entre ordinateurs.
-- Export, import et migration préservant l’historique du POC.
+- Export et import de l’historique AnimeTrace V1.
 - Connexion MAL facultative et synchronisation **AnimeTrace → MyAnimeList**, avec gestion des pannes et des conflits.
 
 « Facultative » signifie que l’utilisateur choisit de connecter son compte ; la fonctionnalité fait bien partie de la V1 et n’est pas repoussée à une livraison suivante. Les éléments explicitement différés dans ce document restent hors V1, notamment l’import de liste MAL et la synchronisation bidirectionnelle complète.
@@ -239,38 +239,17 @@ La connexion OAuth et l’écriture dans une liste MAL n’ont pas encore été 
 - Adapter la synchronisation à la nouvelle hiérarchie et aux identifiants internes.
 - Éviter les doublons quand plusieurs appareils migrent les mêmes données.
 - Préserver les lectures concurrentes et rendre les réessais sans effet supplémentaire.
-- Gérer explicitement la transition entre anciennes et nouvelles versions.
 - Séparer clairement l’état du cloud AnimeTrace de celui de la synchronisation MAL.
 
 La validation réelle PC/Mac reste à réaliser. Le changement de compte ou de projet n’est pas pris en charge dans l’interface actuelle ; son évolution n’a pas été retenue pour le premier périmètre.
 
-## 10. Sauvegarde, import et migration
-
-### Existant à conserver
-
-- Export JSON de l’historique sans jetons d’authentification.
-- Copie locale avant la première fusion cloud.
-
-### Prévu — priorité V1
-
-- Importer une sauvegarde pour restaurer ou récupérer son historique.
-- Préserver intégralement les données de la version 0.3.6 pendant la refonte.
-- Conserver une copie intacte avant conversion.
-- Convertir hors ligne vers un stockage séparé et versionné.
-- Préserver les statuts vus, positions, durées, dates, langues et liens existants.
-- Signaler les entrées invalides sans les supprimer silencieusement.
-- Permettre un réimport sans duplication.
-- Produire un rapport et vérifier les résultats avant toute bascule.
-- Prévoir une récupération en cas d’échec de migration.
+## 10. Sauvegarde et import
 
 ### Réalisé dans la V1
 
 - Réglages → Sauvegarde : « Exporter mon historique » (fichier `animetrace-sauvegarde-AAAA-MM-JJ.json` : bibliothèque et associations MAL confirmées ou refusées, sans session ni mot de passe).
-- « Importer un fichier… » : accepte les sauvegardes V1 et les exports 0.3.6. Fusion sans suppression (vu cumulatif, progression la plus récente, adresses déjà connues prioritaires, choix MAL faits sur l’ordinateur conservés) ; réimport sans doublon ; rapport ajoutés / complétés / déjà à jour.
+- « Importer un fichier… » : accepte les sauvegardes AnimeTrace V1. Fusion sans suppression (vu cumulatif, progression la plus récente, adresses déjà connues prioritaires, choix MAL faits sur l’ordinateur conservés) ; réimport sans doublon ; rapport ajoutés / complétés / déjà à jour.
 - Les épisodes importés partent vers les autres ordinateurs par le cloud.
-- « Exporter la copie 0.3.6 » : copie intacte conservée lors de la migration, au format 0.3.6.
-
-La sauvegarde de référence contient 35 entrées, 11 groupes source et uniquement des versions VOSTFR. Aucun convertisseur n’a encore été exécuté sur l’historique utilisé par l’extension.
 
 ## 11. Popup et réglages
 
@@ -332,7 +311,7 @@ Ces éléments ne sont pas des fonctionnalités promises pour la première versi
 
 ## 15. Références
 
-- [Modèle de données et migration](MODELE-DONNEES.md) : identités, correspondances et règles techniques proposées.
+- [Modèle de données](MODELE-DONNEES.md) : identités, correspondances et règles techniques proposées.
 - [API officielle MyAnimeList](https://myanimelist.net/apiconfig/references/api/v2).
 - [Autorisation MyAnimeList](https://myanimelist.net/apiconfig/references/authorization).
 - [Conditions de l’API MyAnimeList](https://myanimelist.net/static/apiagreement.html).

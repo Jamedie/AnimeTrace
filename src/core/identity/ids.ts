@@ -1,6 +1,6 @@
 // Identifiants internes déterministes à partir du site logique et des clés de contenu.
 // Ne dépendent jamais du domaine : un même contenu sur une nouvelle adresse garde ses identifiants.
-// Les mêmes formules servent à la migration 0.3.6 et aux nouvelles lectures : aucun doublon.
+// Les identifiants restent stables entre appareils et avec les lectures déjà enregistrées.
 
 import type { Language } from "../../shared/model";
 import { uuidV5 } from "../backup/deterministic-id";

@@ -248,11 +248,3 @@ export async function importBackup(
   }
   return report;
 }
-
-/** Copie 0.3.6 la plus récente conservée lors de la migration, s'il y en a une. */
-export async function latestLegacyBackup(
-  db: Database,
-): Promise<{ at: number; history: Record<string, unknown> } | null> {
-  const all = await db.getAll("legacyBackups");
-  return all.sort((a, b) => b.at - a.at)[0] ?? null;
-}

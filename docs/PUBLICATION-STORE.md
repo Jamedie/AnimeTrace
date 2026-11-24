@@ -1,6 +1,6 @@
 # Publication sur le Chrome Web Store
 
-Fiche existante : identifiant `oececnmlgocopkohibfpdbkhmnaofooj` (0.3.6 publiée). La V1 est une mise à jour de cette fiche.
+Identifiant de la fiche AnimeTrace sur le Chrome Web Store : `oececnmlgocopkohibfpdbkhmnaofooj`.
 
 ## 1. Construire le paquet
 
@@ -11,7 +11,11 @@ npm run zip   # .output/animetrace-<version>-chrome-store.zip, sans le champ « 
 
 Le build local (`npm run build`) garde le champ `key` pour avoir le même identifiant que le Store.
 
-## 2. Mettre à jour la fiche
+## 2. Mettre à jour le projet Supabase
+
+Avant de distribuer la 1.0.3, exécuter le script `cloud/v1-operations.sql` du dépôt dans le SQL Editor de Supabase. Il autorise les retraits et les réponses de bibliothèque et conserve les opérations existantes.
+
+## 3. Mettre à jour la fiche
 
 Tableau de bord développeur → AnimeTrace → **Package** → importer le zip, puis renseigner les onglets ci-dessous.
 
@@ -51,8 +55,3 @@ Tableau de bord développeur → AnimeTrace → **Package** → importer le zip,
 - **Code distant** : non.
 - **Données collectées** : historique de navigation limité aux pages d’épisodes des sites autorisés ; informations d’authentification (e-mail, jetons de session) si le cloud ou MAL est connecté. Ni vente, ni usage sans rapport avec la fonction, ni évaluation de solvabilité.
 - **Politique de confidentialité** : https://github.com/Jamedie/AnimeTrace/blob/main/docs/POLITIQUE-CONFIDENTIALITE.md
-
-## 3. Après la publication
-
-- Une fois la V1 installée sur tous les ordinateurs : Réglages → « Clore la transition ».
-- Garder les zips 0.3.6 (Releases GitHub) jusqu’à la fin de la transition.

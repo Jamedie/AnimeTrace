@@ -1,11 +1,8 @@
 import "fake-indexeddb/auto";
-import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { runLegacyMigration } from "../../core/backup/migration";
 import type { EpisodeObservation } from "../../connectors/types";
 import { countAll, openDatabase } from "./database";
 import { recordOpened, recordProgress } from "./history-store";
-import { createMigrationPorts } from "./migration-ports";
 
 let n = 0;
 const freshDb = () => openDatabase(`history-${++n}`);
@@ -90,37 +87,3 @@ describe("enregistrement des lectures", () => {
     expect(await db.count("outbox")).toBe(1);
   });
 });
-
-const privatePath = "tests/fixtures/private/animetrace-0.3.6.json";
-describe.skipIf(!existsSync(privatePath))(
-  "continuité avec la migration",
-  () => {
-    it("une nouvelle lecture d’un épisode migré ne crée pas de doublon", async () => {
-      const db = await freshDb();
-      const { history } = JSON.parse(readFileSync(privatePath, "utf8"));
-      await runLegacyMigration(createMigrationPorts(db, async () => history));
-      const [key, entry] = Object.entries<{
-        anime: string;
-        number: number;
-        title: string;
-      }>(history)[0]!;
-      const v = await recordOpened(
-        db,
-        obs({
-          contentKey: entry.anime,
-          number: entry.number,
-          title: entry.title,
-          url: "https://voiranime.to/x/",
-        }),
-        "pc",
-        Date.now(),
-      );
-      expect((await db.get("legacyKeys", key))?.versionId).toBe(v.id);
-      expect(await countAll(db)).toMatchObject({
-        animes: 11,
-        episodes: 35,
-        versions: 35,
-      });
-    });
-  },
-);

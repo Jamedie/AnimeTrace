@@ -27,6 +27,8 @@ export interface ProbeResult {
 export type PageRequest =
   | { type: "popup.state"; tabId: number | null }
   | { type: "library.state" }
+  | { type: "library.hide"; animeId: string }
+  | { type: "library.previous"; seasonId: string; through: number; watched: boolean }
   | { type: "domains.list" }
   | {
       type: "domains.activated";
@@ -45,8 +47,7 @@ export type CloudRequest =
   | { type: "cloud.configure"; url: string; key: string }
   | { type: "cloud.signIn"; email: string; password: string }
   | { type: "cloud.signOut" }
-  | { type: "cloud.sync" }
-  | { type: "legacy.close" };
+  | { type: "cloud.sync" };
 
 /** Réponse uniforme : le résultat, ou un message d'erreur lisible. */
 export type Reply<T> = { ok: true; value: T } | { ok: false; error: string };
@@ -76,5 +77,4 @@ export interface CoverInfo {
 /** Sauvegarde (Réglages) : export du fichier, import d'un fichier choisi. */
 export type BackupRequest =
   | { type: "backup.export" }
-  | { type: "backup.exportLegacy" }
   | { type: "backup.import"; content: string };

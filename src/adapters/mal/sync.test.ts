@@ -4,7 +4,7 @@ import { answerMal, getMalSync } from "../storage/catalog-store";
 import { openDatabase } from "../storage/database";
 import { recordOpened, recordProgress } from "../storage/history-store";
 import { getAnime, getMyStatus, MalError, updateMyStatus } from "./client";
-import { runMal } from "./sync";
+import { runMal, status } from "./sync";
 
 const { getLocalStorage } = vi.hoisted(() => ({
   getLocalStorage: vi.fn<() => Promise<Record<string, unknown>>>(async () => ({})),
@@ -167,3 +167,22 @@ it.each(["lecture réussie", "lecture en erreur", "écriture déjà partie"] as 
     }
   },
 );
+
+it("compte uniquement les fiches à confirmer visibles dans la bibliothèque", async () => {
+  const db = await openDatabase("mal-status-visible");
+  try {
+    const now = Date.now();
+    for (const [id, openedAt] of [["visible", now], ["hidden", now], ["expired", now - 8 * 86_400_000]] as const) {
+      await db.put("animes", { id, observedTitle: id });
+      await db.put("seasons", { id, animeId: id, provisional: true });
+      await db.put("episodes", { id, seasonId: id, number: 1 });
+      await db.put("versions", { id, episodeId: id, language: "VF", watched: false, openedAt });
+      await db.put("catalogLinks", { seasonId: id, status: "pending", at: now });
+    }
+    await db.put("meta", now, "library.hidden:hidden");
+    expect((await status(db)).pendingLinks).toBe(1);
+    expect(await db.count("catalogLinks")).toBe(3);
+  } finally {
+    db.close();
+  }
+});

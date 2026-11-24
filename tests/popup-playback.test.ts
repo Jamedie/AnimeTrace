@@ -61,3 +61,29 @@ it("rétablit l'épisode actif après redémarrage et le retire après navigatio
     vi.unstubAllGlobals();
   }
 });
+
+it("affiche dans la liste récente les épisodes précédents confirmés", async () => {
+  vi.stubGlobal("defineBackground", vi.fn());
+  const db = await openDatabase("popup-confirmed-episodes");
+  try {
+    const version = await recordOpened(db, {
+      site: "voiranime",
+      contentKey: "clevatess",
+      title: "Clevatess",
+      number: 12,
+      language: "VF",
+      url: "https://voiranime.cx/anime/clevatess/clevatess-12-vf/",
+    }, "device", 1);
+    await db.put("versions", { ...version, watched: true, updatedAt: 2 });
+    const [season] = await db.getAll("seasons");
+    await db.put("meta", { confirmed: 11, reviewed: 11 }, `library.previous:${season!.id}`);
+    const { popupState } = await import("../src/entrypoints/background");
+    expect((await popupState(db, null)).recent[0]).toMatchObject({
+      watchedCount: 12,
+      lastNumber: 12,
+    });
+  } finally {
+    db.close();
+    vi.unstubAllGlobals();
+  }
+});

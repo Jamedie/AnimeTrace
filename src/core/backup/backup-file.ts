@@ -1,15 +1,17 @@
 // Sauvegarde V1 (fichier JSON) : export complet et lecture d'un fichier à importer.
-// Accepte aussi les exports de la 0.3.6, convertis avec les mêmes identifiants que la migration.
 
 import type { Library } from "../../shared/model";
 import type { CatalogLink } from "../catalog/links";
-import { convertLegacyExport } from "./legacy-converter";
-import type { ExportFile } from "./legacy-export";
+
+export interface ExportFile {
+  filename: string;
+  content: string;
+}
 
 export const BACKUP_FORMAT = "animetrace-backup";
 
 export interface BackupContent {
-  kind: "v1" | "legacy";
+  kind: "v1";
   library: Library;
   /** Associations MAL confirmées ou refusées (les propositions en attente sont recalculées). */
   links: CatalogLink[];
@@ -106,12 +108,7 @@ export async function parseBackupFile(text: string): Promise<BackupContent> {
     return { kind: "v1", library, links };
   }
 
-  // Export de la 0.3.6 : { version: 1, history: {…} }.
-  if (data.version === 1 && isObj(data.history)) {
-    const { library } = await convertLegacyExport(data);
-    return { kind: "legacy", library, links: [] };
-  }
   throw new Error(
-    "Fichier non reconnu : choisis une sauvegarde AnimeTrace (V1 ou 0.3.6).",
+    "Fichier non reconnu : choisis une sauvegarde AnimeTrace V1.",
   );
 }

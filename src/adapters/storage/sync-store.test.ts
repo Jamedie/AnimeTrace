@@ -8,7 +8,7 @@ import { recordOpened, recordProgress } from "./history-store";
 import {
   applyRemoteOperations,
   getCursor,
-  importLegacyHistory,
+  importLocalLibraryChoices,
   pendingOperations,
 } from "./sync-store";
 
@@ -156,53 +156,37 @@ describe("synchronisation entre deux ordinateurs", () => {
     await applyRemoteOperations(mac, [{ revision: 1, operation: op }]);
     expect(await mac.get("domains", "voiranime.to")).toBeTruthy();
   });
+});
 
-  it("import de l’historique cloud 0.3.6 : rejouable, fusion avec les lectures V1", async () => {
-    const db = await freshDb();
-    const v = await recordOpened(db, obs, "pc", 1);
-    await recordProgress(
-      db,
-      v.id,
-      { position: 100, duration: 1420, playing: true, ended: false },
-      "pc",
-      2_000,
-    );
-    const legacy = {
-      "solo-leveling:3:vostfr": {
-        anime: "solo-leveling",
-        title: "Solo Leveling",
-        number: 3,
-        language: "VOSTFR",
-        watched: true,
-        position: 1400,
-        duration: 1420,
-        updatedAt: 1_000,
-      },
-      "solo-leveling:2:vostfr": {
-        anime: "solo-leveling",
-        title: "Solo Leveling",
-        number: 2,
-        language: "VOSTFR",
-        watched: true,
-        updatedAt: 900,
-      },
-    };
-    await importLegacyHistory(db, legacy);
-    await importLegacyHistory(db, legacy);
-    expect(await countAll(db)).toMatchObject({
-      animes: 1,
-      episodes: 2,
-      versions: 2,
-    });
-    // Vu cumulatif ; la lecture V1 plus récente garde sa position.
-    expect(await db.get("versions", v.id)).toMatchObject({
-      watched: true,
-      position: 100,
-    });
-    // L'adresse V1 la plus récente n'est pas remplacée.
-    expect(
-      (await db.get("sourceRefs", ["voiranime", "solo-leveling:3:vostfr"]))
-        ?.url,
-    ).toBe(obs.url);
-  });
+it("rejoue les retraits et les réponses de bibliothèque entre appareils", async () => {
+  const db = await freshDb();
+  const operations = [
+    createOperation({ type: "library.hidden", payload: { animeId: "a", through: 100 } }, "pc", 200),
+    createOperation({ type: "library.previous", payload: { seasonId: "s", reviewed: 11, confirmed: 11 } }, "pc", 201),
+    createOperation({ type: "library.previous", payload: { seasonId: "s", reviewed: 15, confirmed: 0 } }, "mac", 202),
+  ];
+  const remote = operations.map((operation, i) => ({ revision: i + 1, operation }));
+  await applyRemoteOperations(db, remote);
+  await applyRemoteOperations(db, remote);
+  expect(await db.get("meta", "library.hidden:a")).toBe(100);
+  expect(await db.get("meta", "library.previous:s")).toEqual({ reviewed: 15, confirmed: 11 });
+});
+
+it("récupère une seule fois les choix locaux du ZIP précédent et les transmet", async () => {
+  const pc = await freshDb();
+  const other = await freshDb();
+  const stored = {
+    "library.hidden:a": 100,
+    "library.previous:s": { reviewed: 11, confirmed: 11 },
+    deviceId: "pc",
+  };
+  await importLocalLibraryChoices(pc, stored, "pc");
+  await importLocalLibraryChoices(pc, stored, "pc");
+  const outbox = await pendingOperations(pc);
+  expect(outbox).toHaveLength(2);
+  await applyRemoteOperations(other, outbox.map((operation, i) => ({ revision: i + 1, operation })));
+  for (const key of ["library.hidden:a", "library.previous:s"] as const) {
+    expect(await pc.get("meta", key)).toEqual(stored[key]);
+    expect(await other.get("meta", key)).toEqual(stored[key]);
+  }
 });

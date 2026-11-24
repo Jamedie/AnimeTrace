@@ -1,6 +1,6 @@
 # AnimeTrace
 
-![Version](https://img.shields.io/badge/version-1.0.0-f4b400)
+![Version](https://img.shields.io/badge/version-1.0.3-f4b400)
 ![Manifest V3](https://img.shields.io/badge/Chrome%20%2F%20Brave-Manifest%20V3-4285f4)
 ![TypeScript](https://img.shields.io/badge/TypeScript-WXT%20%2B%20Vite-3178c6)
 ![Supabase](https://img.shields.io/badge/Cloud-Supabase-3ecf8e)
@@ -18,10 +18,11 @@ Ouvre la [fiche AnimeTrace sur le Chrome Web Store](https://chromewebstore.googl
 
 - Suivi automatique sur les sites pris en charge (Voiranime et ses lecteurs) ; un nouveau domaine s’active en un clic depuis l’icône.
 - Bibliothèque par saison de diffusion, avec affiches, totaux et reprise de l’épisode suivant.
+- Retrait manuel des titres à zéro épisode vu et confirmation des épisodes précédents depuis la bibliothèque, avec synchronisation entre appareils si le cloud est connecté.
 - Historique indépendant des adresses des sites : un changement de domaine ne perd rien.
 - Synchronisation entre ordinateurs (facultative) via Supabase.
 - Catalogue MAL et mise à jour de ta liste MAL (facultative) : le compteur n’est jamais baissé, la note jamais modifiée.
-- Export et import de sauvegarde ; migration automatique depuis la 0.3.6.
+- Export et import des sauvegardes AnimeTrace V1.
 
 ## Développement
 
@@ -30,10 +31,11 @@ npm install
 cp .env.example .env.local   # projet Supabase (clé publique) et Client ID MAL
 npm run dev                  # Brave/Chrome avec rechargement automatique
 npm test                     # tests Vitest
+npm run typecheck            # vérification TypeScript
 npm run build                # extension dans .output/chrome-mv3
 ```
 
-Base cloud : exécuter une fois `cloud/v1-operations.sql` dans l’éditeur SQL de Supabase. N’utiliser que la clé publique `sb_publishable_…` : aucune clé secrète dans le dépôt.
+Base cloud : exécuter à l’installation et après une mise à jour du journal `cloud/v1-operations.sql` dans l’éditeur SQL de Supabase. N’utiliser que la clé publique `sb_publishable_…` : aucune clé secrète dans le dépôt.
 
 ## Déploiement
 

@@ -1,5 +1,4 @@
-// Accès à Supabase (ARCHITECTURE.md §9) : connexion, envoi et lecture du journal,
-// lecture seule de l'historique 0.3.6. Seul module qui parle au cloud.
+// Accès à Supabase pour la connexion et la synchronisation du journal (ARCHITECTURE.md §9).
 
 import type { Operation } from "../../core/sync/operations";
 
@@ -212,22 +211,4 @@ export async function pullOperations(
       createdAt: Date.parse(r.created_at),
     } as Operation,
   }));
-}
-
-/** Historique de la 0.3.6 (lecture seule, jamais modifié). Null si la table n'existe pas ou est vide. */
-export async function readLegacyHistory(
-  config: CloudConfig,
-  session: CloudSession,
-): Promise<Record<string, unknown> | null> {
-  try {
-    const rows = await request<{ history: Record<string, unknown> }[]>(
-      config,
-      "/rest/v1/anime_histories?select=history",
-      { method: "GET", token: session.accessToken },
-    );
-    return rows[0]?.history ?? null;
-  } catch (error) {
-    if (error instanceof CloudError && error.status === 404) return null;
-    throw error;
-  }
 }

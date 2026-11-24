@@ -11,7 +11,7 @@ AnimeTrace est une extension personnelle de suivi des épisodes d’anime. Elle 
 - **Catalogue MAL** : fiche associée à chaque saison (identifiant, titre, affiche, nombre d’épisodes), mise en cache sur l’ordinateur.
 - **Compte cloud** (facultatif) : adresse e-mail, identifiant du compte et jetons de session. Le mot de passe est transmis au service d’authentification puis oublié ; il n’est jamais enregistré.
 - **Compte MAL** (facultatif) : nom d’utilisateur MAL et jetons d’accès. La connexion se fait sur la page officielle de MAL ; le mot de passe MAL n’est jamais saisi dans l’extension.
-- **Copie 0.3.6** : copie intacte de l’ancien historique, conservée lors de la migration.
+- **Préférences de bibliothèque** : les retraits manuels et les confirmations des épisodes précédents sont enregistrés sur l’ordinateur et partagés entre appareils si le cloud AnimeTrace est connecté.
 
 L’extension ne lit pas l’historique général du navigateur. Elle n’agit que sur les sites et lecteurs inclus d’office ou activés explicitement par l’utilisateur. Elle n’enregistre ni les frappes au clavier, ni les communications personnelles, ni les flux vidéo.
 

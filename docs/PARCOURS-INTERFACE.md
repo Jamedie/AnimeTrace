@@ -46,6 +46,8 @@ Page complète de l’extension.
 - **Bouton « Reprendre »** : ouvre la dernière version commencée ou, après une version terminée, l’épisode suivant si sa source est connue dans la même saison. Une simple ouverture de page influence le tri de la bibliothèque et laisse la reprise à sa place. La fiche affiche la dernière progression même si le lien est indisponible. Le passage à la saison suivante reste à implémenter après validation du périmètre et de la numérotation de la saison locale.
 - **Affiche absente** (catalogue non associé ou indisponible) : visuel de remplacement.
 - **Nettoyage automatique**. Un anime dont seules des pages d’épisodes ont été consultées disparaît de la bibliothèque sept jours après la dernière ouverture. Une nouvelle ouverture le fait réapparaître. Dès qu’un épisode a été lancé, l’anime reste dans la bibliothèque, même avec zéro épisode vu. Les données de synchronisation restent disponibles pour appliquer une progression reçue d’un autre appareil.
+- **Retrait manuel**. La fiche d’un anime à zéro épisode vu permet de le retirer de la bibliothèque. Une nouvelle activité le fait réapparaître. Le retrait est synchronisé si le cloud AnimeTrace est connecté.
+- **Épisodes précédents**. Si un épisode est vu alors qu’il manque des épisodes avant lui, la bibliothèque demande s’ils ont été vus, même si la liste MAL est déjà à jour. La confirmation complète le compteur sans créer de source ni de date de lecture. Les réponses sont synchronisées via le cloud AnimeTrace.
 
 ### Situations à prévoir dans la bibliothèque
 
@@ -64,15 +66,8 @@ Page complète de l’extension.
 - **Compte MAL** : « Connecter MAL » (ouvre la page officielle), état, déconnexion. La file en attente est conservée après déconnexion.
 - **Domaines activés** : liste par site, ajout via la fenêtre de l’icône, retrait possible.
 - **Sauvegarde** : export, import avec aperçu du résultat avant validation.
-- **Transition 0.3.6** : visible tant qu’un ordinateur n’est pas migré ; bouton pour clore la transition.
 
-## 4. Premier démarrage après mise à jour
-
-1. Écran de migration : sauvegarde automatique créée, conversion en cours.
-2. Résultat : « 35 épisodes conservés » avec détail, ou rapport d’échec indiquant que les anciennes données restent actives.
-3. Suite proposée : animes à confirmer, connexion MAL facultative.
-
-## 5. Situations transverses
+## 4. Situations transverses
 
 - **Hors ligne** : l’enregistrement continue ; indicateur « en attente ».
 - **MAL indisponible ou connexion expirée** : mises à jour en attente, invitation à se reconnecter si nécessaire.
